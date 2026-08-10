@@ -1,0 +1,455 @@
+@import 'tailwindcss';
+
+/* ————————————————————————————————————————————————————————
+   Membrain — The Memory Ledger.
+   A paper archive of everything known: ruled entries, serif
+   headings, ink stamps, an index rail. Day = paper, night =
+   the same ledger read by lamplight.
+   ———————————————————————————————————————————————————————— */
+
+:root {
+  color-scheme: light;
+  --bg: #f4f1e8;
+  --surface: #fdfcf7;
+  --surface-2: #efece1;
+  --inset: rgba(28, 25, 20, 0.04);
+  --input-bg: #fdfcf7;
+  --line: #e0dbcc;
+  --line-strong: #b8b09a;
+  --text: #1c1917;
+  --text-2: #57534e;
+  --text-3: #99948a;
+  --accent: #1e3a8a;
+  --accent-text: #1e3a8a;
+  --accent-soft: rgba(30, 58, 138, 0.07);
+  --accent-line: rgba(30, 58, 138, 0.4);
+  --danger: #b91c1c;
+  --warn: #92650f;
+  --shadow: 0 1px 2px rgba(28, 25, 20, 0.05), 0 10px 30px -18px rgba(28, 25, 20, 0.25);
+  --font-display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+  --font-body: 'Inter Variable', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', ui-monospace, Consolas, monospace;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #131110;
+  --surface: #1a1815;
+  --surface-2: #211e1a;
+  --inset: rgba(236, 231, 219, 0.045);
+  --input-bg: #191714;
+  --line: rgba(236, 231, 219, 0.12);
+  --line-strong: rgba(236, 231, 219, 0.26);
+  --text: #ece7db;
+  --text-2: #b3ada0;
+  --text-3: #7a756a;
+  --accent: #a8bff2;
+  --accent-text: #a8bff2;
+  --accent-soft: rgba(168, 191, 242, 0.09);
+  --accent-line: rgba(168, 191, 242, 0.4);
+  --danger: #f0a3a3;
+  --warn: #d9b36a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -18px rgba(0, 0, 0, 0.55);
+}
+
+html {
+  scrollbar-color: var(--line-strong) var(--bg);
+}
+
+body {
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* faint paper grain — atmosphere, not decoration */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.024 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-theme='dark'] body::before {
+  opacity: 0.5;
+}
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+h1,
+h2,
+h3,
+.display {
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 40, 'WONK' 0;
+  letter-spacing: -0.005em;
+}
+
+::selection {
+  background: rgba(30, 58, 138, 0.18);
+}
+:root[data-theme='dark'] ::selection {
+  background: rgba(168, 191, 242, 0.28);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 50;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+}
+.skip-link:focus-visible {
+  left: 0;
+}
+
+/* Sheets of paper. Small radius, hairline, graphite shadow — no glass, no glow. */
+.card {
+  position: relative;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card-hover {
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.card-hover:hover {
+  border-color: var(--line-strong);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 360ms ease-out both;
+}
+
+/* ————— index rail ————— */
+.rail-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  color: var(--text-2);
+  font-size: 13.5px;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  text-align: left;
+}
+.rail-item:hover {
+  color: var(--text);
+}
+.rail-item[aria-current='page'] {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 550;
+}
+.rail-no {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+/* ————— ledger entries ————— */
+.entry {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  transition: background 120ms ease;
+}
+.entry:hover {
+  background: var(--inset);
+}
+.entry-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  min-width: 2.6rem;
+}
+
+/* ink stamp — how a writer signs the ledger */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.06rem 0.42rem;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transform: rotate(-0.6deg);
+  white-space: nowrap;
+}
+
+/* ————— inputs ————— */
+.input {
+  width: 100%;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: var(--input-bg);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.875rem;
+  color: var(--text);
+  transition: border-color 140ms ease;
+}
+.input::placeholder {
+  color: var(--text-3);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--accent-line);
+}
+
+/* The recall line — a ruled line on the page, not a box. */
+.recall {
+  border: none;
+  border-bottom: 2px solid var(--text);
+  border-radius: 0;
+  background: transparent;
+  height: 3.2rem;
+  padding-left: 2.4rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-variation-settings: 'SOFT' 60;
+}
+.recall::placeholder {
+  font-style: italic;
+  color: var(--text-3);
+}
+.recall:focus {
+  border-bottom-color: var(--accent);
+}
+
+/* ————— buttons: small caps, rectangular, letterpress ————— */
+.btn,
+.btn-primary,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 3px;
+  padding: 0.4rem 0.8rem;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 130ms ease, border-color 130ms ease, color 130ms ease;
+  border: 1px solid var(--line-strong);
+  color: var(--text-2);
+  background: transparent;
+  white-space: nowrap;
+}
+.btn:hover {
+  color: var(--text);
+  border-color: var(--text-2);
+  background: var(--inset);
+}
+.btn:disabled,
+.btn-primary:disabled,
+.btn-danger:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+.btn-primary:hover {
+  filter: brightness(1.12);
+}
+:root[data-theme='dark'] .btn-primary {
+  color: #131110;
+}
+
+.btn-danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 2px;
+  padding: 0.1rem 0.45rem;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  background: var(--surface);
+}
+.chip-btn {
+  cursor: pointer;
+  transition: color 130ms ease, border-color 130ms ease;
+}
+.chip-btn:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+.chip-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-3);
+}
+
+.notice {
+  color: var(--accent-text);
+}
+
+code.pill {
+  border-radius: 2px;
+  padding: 0.08rem 0.35rem;
+  font-size: 12px;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* underline tabs (views, editor modes) — index dividers, not pills */
+.seg {
+  display: flex;
+  gap: 1.1rem;
+  border-bottom: 1px solid var(--line);
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+.seg button,
+.seg-tab {
+  padding: 0.3rem 0.1rem 0.45rem;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 130ms ease, border-color 130ms ease;
+}
+.seg button:hover {
+  color: var(--text);
+}
+.seg .seg-on {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  background: transparent;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+/* dotted leaders for meta tables: label ……… value */
+.leader {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 12.5px;
+}
+.leader::before {
+  content: none;
+}
+.leader-dots {
+  flex: 1;
+  border-bottom: 1px dotted var(--line-strong);
+  transform: translateY(-3px);
+}
+
+/* double rule — a ledger section header */
+.rule-double {
+  border-top: 2px solid var(--text);
+  border-bottom: 1px solid var(--line-strong);
+  height: 4px;
+}
+
+/* ————— the drawer: a sheet pulled from the file ————— */
+@keyframes drawer-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(28, 25, 20, 0.32);
+}
+:root[data-theme='dark'] .drawer-scrim {
+  background: rgba(0, 0, 0, 0.55);
+}
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  width: min(34rem, 94vw);
+  background: var(--surface);
+  border-left: 1px solid var(--line-strong);
+  box-shadow: -24px 0 60px -30px rgba(28, 25, 20, 0.45);
+  animation: drawer-in 220ms ease-out both;
+  display: flex;
+  flex-direction: column;
+}
+
+.rowlist > * + * {
+  border-top: 1px solid var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
