@@ -114,8 +114,14 @@ export default function Settings() {
   const [llmTest, setLlmTest] = useState<string | null>(null);
   const testBrain = async () => {
     setBusy(true);
-    setLlmTest('Testing…');
     try {
+      // unsaved edits are saved first — testing what's on screen, not what was
+      if (Object.keys(dirty).length > 0) {
+        setLlmTest('Saving…');
+        await api.saveSettings(dirty);
+        setDirty({});
+      }
+      setLlmTest('Testing…');
       const r = await api.testLlm();
       setLlmTest(`✓ ${r.provider} answered with ${r.model}`);
     } catch (e) {
@@ -216,10 +222,8 @@ export default function Settings() {
         <div className="flex items-center gap-3">
           <button
             className="btn"
-            disabled={busy || Object.keys(dirty).length > 0}
-            title={
-              Object.keys(dirty).length > 0 ? 'Save settings first, then test' : 'Send a tiny prompt to the configured brain'
-            }
+            disabled={busy}
+            title="Saves any pending changes, then sends a tiny prompt to the configured brain"
             onClick={() => void testBrain()}
           >
             Test connection
