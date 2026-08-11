@@ -13,6 +13,11 @@ export interface EmbedderOptions {
   quiet?: boolean; // stdio mode: nothing may touch stdout
 }
 
+/** Direct access to the local embedder — the safety net when a cloud one fails. */
+export async function getLocalEmbedder(opts: EmbedderOptions): Promise<Embedder> {
+  return localEmbedder(opts);
+}
+
 async function localEmbedder(opts: EmbedderOptions): Promise<Embedder> {
   const { FlagEmbedding, EmbeddingModel } = await import('fastembed');
   const fe = await FlagEmbedding.init({
@@ -48,7 +53,7 @@ async function apiEmbedder(url: string, model: string, apiKey?: string): Promise
       body: JSON.stringify(body),
     });
   }
-  async function embed(texts: string[], kind: 'passage' | 'query'): Promise<number[][]> {
+  async function embedBatch(texts: string[], kind: 'passage' | 'query'): Promise<number[][]> {
     // standard OpenAI shape first; some providers (NVIDIA retriever models)
     // refuse without input_type, so retry once with it
     let res = await call({ input: texts, model });
@@ -56,6 +61,16 @@ async function apiEmbedder(url: string, model: string, apiKey?: string): Promise
     if (!res.ok) throw new Error(`embedding API ${res.status}: ${await res.text()}`);
     const json = (await res.json()) as { data: { index: number; embedding: number[] }[] };
     return json.data.sort((a, b) => a.index - b.index).map((d) => d.embedding);
+  }
+  async function embed(texts: string[], kind: 'passage' | 'query'): Promise<number[][]> {
+    // cloud embed models cap input length (NVIDIA retrievers: 512 tokens) and
+    // batch size — clip each text and send in modest batches
+    const clipped = texts.map((t) => t.slice(0, 1500));
+    const out: number[][] = [];
+    for (let i = 0; i < clipped.length; i += 32) {
+      out.push(...(await embedBatch(clipped.slice(i, i + 32), kind)));
+    }
+    return out;
   }
   const [probe] = await embed(['dim probe'], 'passage');
   return {

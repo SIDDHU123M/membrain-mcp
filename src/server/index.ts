@@ -6,7 +6,7 @@ import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
 import { openDb } from '../core/db.js';
-import { getEmbedder } from '../core/embeddings.js';
+import { getEmbedder, getLocalEmbedder } from '../core/embeddings.js';
 import { needsReembed, reembedAll } from '../core/memories.js';
 import { snapshotOnBoot } from '../core/backup.js';
 import { registerRest, type Ctx } from './rest.js';
@@ -54,11 +54,21 @@ async function main() {
       log(`membrain: boot snapshot failed: ${(err as Error).message}`);
     }
   }
-  const embedder = await getEmbedder(db, { dataDir, quiet: stdio });
+  let embedder = await getEmbedder(db, { dataDir, quiet: stdio });
   if (needsReembed(db, embedder)) {
     log(`membrain: embedding model changed → re-embedding all chunks with ${embedder.model}...`);
-    const n = await reembedAll(db, embedder);
-    log(`membrain: re-embedded ${n} chunks`);
+    try {
+      const n = await reembedAll(db, embedder);
+      log(`membrain: re-embedded ${n} chunks`);
+    } catch (err) {
+      // a failed migration must never kill the boot — nothing was written
+      // (reembedAll commits in one transaction), so the old vectors are intact.
+      // Fall back to the local embedder, which matches them.
+      console.error(
+        `[embeddings] re-embedding failed (${(err as Error).message}) — staying on local embeddings`,
+      );
+      embedder = await getLocalEmbedder({ dataDir, quiet: stdio });
+    }
   }
   const ctx: Ctx = { db, embedder, dbFile, readonlySkills: has('--readonly-skills') };
 
