@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
-import { openDb } from '../core/db.js';
+import { getSetting, openDb, setSetting } from '../core/db.js';
 import { getEmbedder, getLocalEmbedder } from '../core/embeddings.js';
 import { needsReembed, reembedAll } from '../core/memories.js';
 import { snapshotOnBoot } from '../core/backup.js';
@@ -75,6 +75,28 @@ async function main() {
       embedder = await getLocalEmbedder({ dataDir, quiet: stdio });
     }
   }
+  // seeded first run: an empty ledger reads as abandoned, not minimal. Five
+  // example entries (tag `example`, one-click clear in the UI) so every screen
+  // demos itself. Only ever once — clearing them must not reseed.
+  if (!getSetting(db, 'seeded')) {
+    const count = (db.prepare('SELECT COUNT(*) AS n FROM memories').get() as { n: number }).n;
+    if (count === 0) {
+      const { saveMemory } = await import('../core/memories.js');
+      const EXAMPLES = [
+        'Welcome to your ledger. Entries are plain text — facts, preferences, decisions. This one is an example; when you are done looking around, strike all examples with one click.',
+        'Your agents write here too. Connect one at http://127.0.0.1:7777/mcp and anything it saves appears in the ledger instantly, stamped with its name.',
+        "Search is hybrid: meaning and keywords together. Try recalling 'how do agents connect' — this page's neighbor should surface even without exact words.",
+        'Tags group entries. This one carries the example tag; click any tag in the ledger to filter by it.',
+        'The clerk — a local Ollama, or any cloud key pasted in Settings — can title, organize and summarize the store. Every change it proposes is staged for your approval first.',
+      ];
+      for (const content of EXAMPLES) {
+        await saveMemory(db, embedder, { content, tags: ['example'], source: 'ui' });
+      }
+      log(`membrain: first run — seeded ${EXAMPLES.length} example entries (tag: example)`);
+    }
+    setSetting(db, 'seeded', '1');
+  }
+
   const ctx: Ctx = { db, embedder, dbFile, readonlySkills: has('--readonly-skills') };
 
   if (stdio) {

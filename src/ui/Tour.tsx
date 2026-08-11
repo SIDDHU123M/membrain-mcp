@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 export interface TourStep {
   tab: string | null;
+  /** optional in-page element to spotlight; falls back to the rail tab button */
+  spot?: string;
   title: string;
   body: string;
 }
@@ -14,8 +16,9 @@ const STEPS: TourStep[] = [
   },
   {
     tab: 'Memories',
+    spot: '#recall-input',
     title: 'Memories',
-    body: 'The ledger itself. The ruled line on top recalls anything — hybrid semantic and keyword search. Record entries by hand, drop PDFs to have them distilled, and let the clerk organize, title, and summarize. Every entry is stamped with who wrote it.',
+    body: 'The ledger itself. This ruled line recalls anything — hybrid semantic and keyword search. Record entries by hand, drop PDFs to have them distilled, and let the clerk organize, title, and summarize. Every entry is stamped with who wrote it.',
   },
   {
     tab: 'Map',
@@ -57,6 +60,10 @@ interface Spot {
   height: number;
 }
 
+const CARD_W = 480;
+const CARD_EST_H = 250;
+const GAP = 14;
+
 export default function Tour({
   onTab,
   onClose,
@@ -70,22 +77,36 @@ export default function Tour({
 
   useEffect(() => {
     if (step.tab) onTab(step.tab);
-    const target = () =>
-      step.tab ? document.querySelector<HTMLElement>(`[data-tour="${step.tab}"]`) : null;
+    let cancelled = false;
+    let tries = 0;
+    const find = (): HTMLElement | null =>
+      (step.spot && document.querySelector<HTMLElement>(step.spot)) ||
+      (step.tab ? document.querySelector<HTMLElement>(`[data-tour="${step.tab}"]`) : null);
     const measure = () => {
-      const el = target();
+      if (cancelled) return;
+      const el = find();
+      // in-page spots mount after the tab switch — keep trying briefly
+      if (step.spot && !document.querySelector(step.spot) && tries < 30) {
+        tries++;
+        requestAnimationFrame(measure);
+      }
       if (!el) return setSpot(null);
       const r = el.getBoundingClientRect();
       setSpot({ top: r.top - 5, left: r.left - 5, width: r.width + 10, height: r.height + 10 });
     };
-    target()?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    find()?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const raf = requestAnimationFrame(measure);
-    window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, true);
+    const remeasure = () => {
+      tries = 30;
+      measure();
+    };
+    window.addEventListener('resize', remeasure);
+    window.addEventListener('scroll', remeasure, true);
     return () => {
+      cancelled = true;
       cancelAnimationFrame(raf);
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener('resize', remeasure);
+      window.removeEventListener('scroll', remeasure, true);
     };
   }, [step, onTab]);
 
@@ -105,16 +126,32 @@ export default function Tour({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);
 
+  // the card follows the spotlight: below the target when there's room,
+  // above it otherwise, clamped to the viewport; centered on the welcome step
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const cardW = Math.min(CARD_W, vw - 24);
+  const cardStyle: React.CSSProperties = spot
+    ? {
+        top:
+          spot.top + spot.height + GAP + CARD_EST_H < vh - 12
+            ? spot.top + spot.height + GAP
+            : Math.max(12, spot.top - CARD_EST_H - GAP),
+        left: Math.min(Math.max(12, spot.left), vw - cardW - 12),
+        width: cardW,
+      }
+    : { top: Math.max(48, vh * 0.18), left: (vw - cardW) / 2, width: cardW };
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center px-3 pt-20 pb-3 sm:px-4 sm:pt-24 sm:pb-4" role="dialog" aria-modal="true" aria-label="Tour">
+    <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Tour">
       {/* click-catcher; the actual veil is the spotlight's box-shadow */}
       <div className="absolute inset-0" onClick={finish} aria-hidden="true" />
       <div
         className="tour-spot"
         style={
           spot ?? {
-            top: window.innerHeight / 2,
-            left: window.innerWidth / 2,
+            top: vh / 2,
+            left: vw / 2,
             width: 0,
             height: 0,
             outlineColor: 'transparent',
@@ -123,7 +160,10 @@ export default function Tour({
         aria-hidden="true"
       />
 
-      <div className="card relative z-10 w-full max-w-[30rem] max-h-[min(82vh,36rem)] overflow-y-auto p-4 sm:p-5 sm:mb-2">
+      <div
+        className="card fixed z-10 max-h-[min(82vh,36rem)] overflow-y-auto p-4 sm:p-5"
+        style={{ ...cardStyle, transition: 'top 0.4s cubic-bezier(0.33,1,0.68,1), left 0.4s cubic-bezier(0.33,1,0.68,1)' }}
+      >
         <div className="rule-double" aria-hidden="true" />
         <div className="flex items-baseline gap-3 pt-3">
           <span className="label">

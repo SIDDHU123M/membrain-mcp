@@ -16,6 +16,8 @@ export interface Memory {
   source: string;
   created_at: string;
   updated_at: string;
+  pinned: boolean;
+  archived: boolean;
 }
 
 interface MemoryRow {
@@ -26,10 +28,17 @@ interface MemoryRow {
   source: string;
   created_at: string;
   updated_at: string;
+  pinned: number;
+  archived: number;
 }
 
 function toMemory(row: MemoryRow): Memory {
-  return { ...row, tags: JSON.parse(row.tags) as string[] };
+  return {
+    ...row,
+    tags: JSON.parse(row.tags) as string[],
+    pinned: !!row.pinned,
+    archived: !!row.archived,
+  };
 }
 
 function validateContent(content: unknown): string {
@@ -103,17 +112,16 @@ export async function updateMemory(
   db: DB,
   embedder: Embedder,
   id: number,
-  patch: { content?: string; tags?: string[] },
+  patch: { content?: string; tags?: string[]; pinned?: boolean; archived?: boolean },
 ): Promise<Memory> {
   const existing = getMemory(db, id);
   const content = patch.content !== undefined ? validateContent(patch.content) : existing.content;
   const tags = patch.tags !== undefined ? validateTags(patch.tags) : existing.tags;
-  db.prepare('UPDATE memories SET content = ?, tags = ?, updated_at = ? WHERE id = ?').run(
-    content,
-    JSON.stringify(tags),
-    new Date().toISOString(),
-    id,
-  );
+  const pinned = patch.pinned !== undefined ? patch.pinned : existing.pinned;
+  const archived = patch.archived !== undefined ? patch.archived : existing.archived;
+  db.prepare(
+    'UPDATE memories SET content = ?, tags = ?, pinned = ?, archived = ?, updated_at = ? WHERE id = ?',
+  ).run(content, JSON.stringify(tags), pinned ? 1 : 0, archived ? 1 : 0, new Date().toISOString(), id);
   if (patch.content !== undefined && content !== existing.content) {
     // the LLM title described the old content — clear it so it can be re-proposed
     db.prepare('UPDATE memories SET title = NULL WHERE id = ?').run(id);
@@ -136,20 +144,35 @@ export function deleteMemory(db: DB, id: number): void {
 
 export function listMemories(
   db: DB,
-  opts: { limit?: number; tag?: string } = {},
+  opts: { limit?: number; tag?: string; archived?: boolean } = {},
 ): Memory[] {
   const limit = Math.max(1, Math.min(opts.limit ?? 20, 500));
-  const rows = (
-    opts.tag
-      ? db
-          .prepare(
-            `SELECT * FROM memories
-             WHERE EXISTS (SELECT 1 FROM json_each(memories.tags) WHERE json_each.value = ?)
-             ORDER BY created_at DESC, id DESC LIMIT ?`,
-          )
-          .all(opts.tag, limit)
-      : db.prepare('SELECT * FROM memories ORDER BY created_at DESC, id DESC LIMIT ?').all(limit)
-  ) as MemoryRow[];
+  // default view: live pages only, pinned float; archived view: the drawer of struck pages
+  const where = [opts.archived ? 'archived = 1' : 'archived = 0'];
+  const params: (string | number)[] = [];
+  if (opts.tag) {
+    where.push('EXISTS (SELECT 1 FROM json_each(memories.tags) WHERE json_each.value = ?)');
+    params.push(opts.tag);
+  }
+  const rows = db
+    .prepare(
+      `SELECT * FROM memories WHERE ${where.join(' AND ')}
+       ORDER BY pinned DESC, created_at DESC, id DESC LIMIT ?`,
+    )
+    .all(...params, limit) as MemoryRow[];
+  return rows.map(toMemory);
+}
+
+/** Oldest untouched live entries — candidates for confirm-or-strike review. */
+export function listStale(db: DB, opts: { days?: number; limit?: number } = {}): Memory[] {
+  const days = Math.max(1, opts.days ?? 90);
+  const limit = Math.max(1, Math.min(opts.limit ?? 20, 100));
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const rows = db
+    .prepare(
+      'SELECT * FROM memories WHERE archived = 0 AND pinned = 0 AND updated_at < ? ORDER BY updated_at ASC LIMIT ?',
+    )
+    .all(cutoff, limit) as MemoryRow[];
   return rows.map(toMemory);
 }
 

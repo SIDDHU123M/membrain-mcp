@@ -12,6 +12,7 @@ import {
   updateMemory,
   deleteMemory,
   listMemories,
+  listStale,
   stats,
   ValidationError,
   NotFoundError,
@@ -76,10 +77,10 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     return reply.status(500).send({ error: 'internal error' });
   });
 
-  app.get<{ Querystring: { query?: string; tag?: string; limit?: string } }>(
+  app.get<{ Querystring: { query?: string; tag?: string; limit?: string; archived?: string } }>(
     '/api/memories',
     async (req) => {
-      const { query, tag, limit } = req.query;
+      const { query, tag, limit, archived } = req.query;
       if (query && query.trim()) {
         return searchMemories(db, embedder, {
           query,
@@ -87,9 +88,20 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
           tags: tag ? [tag] : undefined,
         });
       }
-      return listMemories(db, { limit: limit ? Number(limit) : undefined, tag });
+      return listMemories(db, {
+        limit: limit ? Number(limit) : undefined,
+        tag,
+        archived: archived === '1',
+      });
     },
   );
+
+  app.get<{ Querystring: { days?: string; limit?: string } }>('/api/memories/stale', async (req) => {
+    return listStale(db, {
+      days: req.query.days ? Number(req.query.days) : undefined,
+      limit: req.query.limit ? Number(req.query.limit) : undefined,
+    });
+  });
 
   app.post<{ Body: { content: string; tags?: string[] } }>('/api/memories', async (req, reply) => {
     const m = await saveMemory(db, embedder, {
@@ -104,10 +116,10 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     getMemory(db, Number(req.params.id)),
   );
 
-  app.patch<{ Params: { id: string }; Body: { content?: string; tags?: string[] } }>(
-    '/api/memories/:id',
-    async (req) => updateMemory(db, embedder, Number(req.params.id), req.body ?? {}),
-  );
+  app.patch<{
+    Params: { id: string };
+    Body: { content?: string; tags?: string[]; pinned?: boolean; archived?: boolean };
+  }>('/api/memories/:id', async (req) => updateMemory(db, embedder, Number(req.params.id), req.body ?? {}));
 
   app.delete<{ Params: { id: string } }>('/api/memories/:id', async (req) => {
     deleteMemory(db, Number(req.params.id));
@@ -240,10 +252,12 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     });
   });
 
-  app.get('/api/insights/map/stream', async (_req, reply) => {
+  app.get<{ Querystring: { mode?: string } }>('/api/insights/map/stream', async (req, reply) => {
     const s = sseStart(reply);
     try {
-      const map = await buildMemoryMap(db, (p) => s.send('progress', p));
+      const map = await buildMemoryMap(db, (p) => s.send('progress', p), {
+        onlyNew: req.query.mode === 'update',
+      });
       s.send('done', map);
     } catch (err) {
       console.error(`[ai] organize failed: ${(err as Error).message}`);

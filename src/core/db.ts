@@ -39,6 +39,10 @@ const MIGRATIONS: string[] = [
   `,
   // 002 — LLM-generated display titles (nullable; only insights.ts writes them)
   `ALTER TABLE memories ADD COLUMN title TEXT;`,
+  // 003 — dog-eared pages: pinned floats to the top everywhere, archived leaves
+  // default lists and search but is never deleted
+  `ALTER TABLE memories ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE memories ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export function openDb(file: string): DB {

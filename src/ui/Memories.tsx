@@ -129,6 +129,8 @@ function Drawer({
             ENTRY&nbsp;#{String(memory.id).padStart(3, '0')}
           </span>
           <Stamp source={memory.source} />
+          {memory.pinned && <span className="text-[12px]" title="Pinned">★</span>}
+          {memory.archived && <span className="chip">archived</span>}
           <button
             className="ml-auto cursor-pointer text-[18px] leading-none text-[var(--text-3)] hover:text-[var(--text)]"
             onClick={onClose}
@@ -212,6 +214,37 @@ function Drawer({
               </button>
               <button className="btn" onClick={() => void findRelated()} disabled={toolBusy !== null}>
                 {toolBusy === 'related' ? 'Searching…' : 'Find related'}
+              </button>
+              <button
+                className="btn"
+                disabled={busy}
+                onClick={async () => {
+                  await api.updateMemory(memory.id, { pinned: !memory.pinned });
+                  onChanged();
+                  onClose();
+                }}
+              >
+                {memory.pinned ? 'Unpin' : 'Pin to top'}
+              </button>
+              <button
+                className="btn"
+                disabled={busy}
+                onClick={async () => {
+                  await api.updateMemory(memory.id, { archived: !memory.archived });
+                  onChanged();
+                  onClose();
+                }}
+              >
+                {memory.archived ? 'Restore' : 'Archive'}
+              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  const md = `---\nid: ${memory.id}\ntags: ${JSON.stringify(memory.tags)}\nsource: ${memory.source}\n---\n\n${memory.content}\n`;
+                  void navigator.clipboard.writeText(md).then(() => setToolNote('Copied as markdown.'));
+                }}
+              >
+                Copy as markdown
               </button>
             </div>
             {toolNote && <p className="notice mt-2 text-[12px]">{toolNote}</p>}
@@ -330,6 +363,8 @@ export default function Memories({
   const [tag, setTag] = useState<string | null>(null);
   const [writer, setWriter] = useState<string | null>(null);
   const [view, setView] = useState<'ledger' | 'cards' | 'topics'>('ledger');
+  const [shelf, setShelf] = useState<'live' | 'pinned' | 'archived'>('live');
+  const [stale, setStale] = useState<Memory[] | null>(null);
   const [map, setMap] = useState<MemoryMap | null>(null);
   const [category, setCategory] = useState<MapCategory | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -381,9 +416,15 @@ export default function Memories({
   }, [jumpMemory, onJumpConsumed]);
 
   const load = useCallback(async () => {
-    setMemories(await api.memories({ query: query || undefined, tag: tag ?? undefined }));
+    setMemories(
+      await api.memories({
+        query: query || undefined,
+        tag: tag ?? undefined,
+        archived: shelf === 'archived',
+      }),
+    );
     onStatsDirty();
-  }, [query, tag, onStatsDirty]);
+  }, [query, tag, shelf, onStatsDirty]);
 
   useEffect(() => {
     const t = setTimeout(load, query ? 250 : 0);
@@ -455,13 +496,14 @@ export default function Memories({
 
   const visible = useMemo(() => {
     let v = memories;
+    if (shelf === 'pinned') v = v.filter((m) => m.pinned);
     if (writer) v = v.filter((m) => m.source === writer);
     if (category) {
       const ids = new Set(category.ids);
       v = v.filter((m) => ids.has(m.id));
     }
     return v;
-  }, [memories, writer, category]);
+  }, [memories, shelf, writer, category]);
 
   const scope = useMemo((): { ids?: number[]; label: string } => {
     if (selected.size > 0) return { ids: [...selected], label: `${selected.size} selected` };
@@ -537,11 +579,11 @@ export default function Memories({
   };
 
   /* live SSE ops — the clerk reports as it works */
-  const runMap = () => {
+  const runMap = (onlyNew = false) => {
     setAiOp('map');
     setNotice(null);
-    setAiStatus('Filing memories into topics…');
-    const es = new EventSource('/api/insights/map/stream');
+    setAiStatus(onlyNew ? 'Filing new entries into existing topics…' : 'Filing memories into topics…');
+    const es = new EventSource(`/api/insights/map/stream${onlyNew ? '?mode=update' : ''}`);
     esRef.current = es;
     es.addEventListener('progress', (e) => {
       const p = JSON.parse((e as MessageEvent).data) as {
@@ -636,6 +678,30 @@ export default function Memories({
     }
   };
 
+  const findStale = async () => {
+    setNotice(null);
+    try {
+      const r = await api.stale(90);
+      setStale(r);
+      if (r.length === 0) setNotice('Nothing stale — every live entry was touched in the last 90 days.');
+    } catch (e) {
+      setNotice((e as Error).message);
+    }
+  };
+
+  const resolveStale = async (id: number, action: 'confirm' | 'archive' | 'strike') => {
+    setBusy(true);
+    try {
+      if (action === 'confirm') await api.updateMemory(id, {}); // touch: still true today
+      if (action === 'archive') await api.updateMemory(id, { archived: true });
+      if (action === 'strike') await api.deleteMemory(id);
+      setStale((s) => s?.filter((m) => m.id !== id) ?? null);
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const deleteDupe = async (id: number) => {
     setBusy(true);
     try {
@@ -701,13 +767,24 @@ export default function Memories({
     });
   };
 
-  const ctxAction = async (action: 'open' | 'select' | 'title' | 'export' | 'delete') => {
+  const ctxAction = async (
+    action: 'open' | 'select' | 'title' | 'export' | 'pin' | 'archive' | 'delete',
+  ) => {
     if (!ctxMenu) return;
     const m = ctxMenu.m;
     setCtxMenu(null);
     if (action === 'open') setDrawer(m);
     if (action === 'select') toggleSelect(m.id);
     if (action === 'export') window.open(`/api/export/memories?ids=${m.id}`, '_blank');
+    if (action === 'pin') {
+      await api.updateMemory(m.id, { pinned: !m.pinned });
+      await load();
+    }
+    if (action === 'archive') {
+      await api.updateMemory(m.id, { archived: !m.archived });
+      setNotice(m.archived ? `Entry #${m.id} restored to the ledger.` : `Entry #${m.id} filed to the archive.`);
+      await load();
+    }
     if (action === 'title') {
       try {
         await api.proposeTitleFor(m.id);
@@ -798,9 +875,19 @@ export default function Memories({
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            <button className="btn-primary" onClick={runMap} disabled={aiOp !== null}>
+            <button className="btn-primary" onClick={() => runMap(false)} disabled={aiOp !== null}>
               {map ? 'Reorganize' : 'Organize'}
             </button>
+            {map && map.stale && (
+              <button
+                className="btn"
+                onClick={() => runMap(true)}
+                disabled={aiOp !== null}
+                title="File only entries the map has never seen into the existing topics — much faster than a full reorganize"
+              >
+                File new entries
+              </button>
+            )}
             <button
               className="btn"
               onClick={runTitles}
@@ -814,6 +901,13 @@ export default function Memories({
             </button>
             <button className="btn" onClick={() => void findDupes()} title="Vector similarity — instant, no LLM">
               Duplicates
+            </button>
+            <button
+              className="btn"
+              onClick={() => void findStale()}
+              title="Entries untouched for 90+ days — confirm they still hold, or archive/strike them"
+            >
+              Stale
             </button>
             <button className="btn" onClick={exportScope}>
               Export {scope.label}
@@ -942,6 +1036,47 @@ export default function Memories({
         </section>
       )}
 
+      {stale && stale.length > 0 && (
+        <section className="card rise p-4" aria-label="Stale entries">
+          <div className="mb-2 flex items-center gap-2">
+            <p className="flex-1 text-[12.5px] text-[var(--text-2)]">
+              {stale.length} {stale.length === 1 ? 'entry' : 'entries'} untouched for 90+ days —
+              confirm each still holds, or file it away.
+            </p>
+            <button className="btn" onClick={() => setStale(null)}>
+              Close
+            </button>
+          </div>
+          <div className="rowlist max-h-[40vh] overflow-y-auto">
+            {stale.map((m) => (
+              <div key={m.id} className="flex items-start gap-3 py-2.5">
+                <span className="mono pt-0.5 text-[10.5px] text-[var(--text-3)]">
+                  #{String(m.id).padStart(3, '0')}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 text-[12.5px] leading-5 text-[var(--text-2)]">{m.content}</p>
+                  <span className="mono text-[10px] text-[var(--text-3)]">
+                    last touched {new Date(m.updated_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <Stamp source={m.source} />
+                <div className="flex shrink-0 gap-1">
+                  <button className="btn px-2 py-0.5 text-[10.5px]" onClick={() => void resolveStale(m.id, 'confirm')} disabled={busy} title="Mark as still true today">
+                    Still true
+                  </button>
+                  <button className="btn px-2 py-0.5 text-[10.5px]" onClick={() => void resolveStale(m.id, 'archive')} disabled={busy}>
+                    Archive
+                  </button>
+                  <button className="btn-danger px-2 py-0.5 text-[10.5px]" onClick={() => void resolveStale(m.id, 'strike')} disabled={busy}>
+                    Strike
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* filters + views */}
       <div className="rise flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="seg" role="group" aria-label="View">
@@ -951,7 +1086,34 @@ export default function Memories({
             </button>
           ))}
         </div>
+        <div className="seg" role="group" aria-label="Shelf">
+          {(['live', 'pinned', 'archived'] as const).map((s) => (
+            <button key={s} onClick={() => setShelf(s)} aria-pressed={shelf === s} className={shelf === s ? 'seg-on' : ''}>
+              {s}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap items-center gap-1.5">
+          {allTags.includes('example') && (
+            <button
+              className="chip chip-btn"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const ex = memories.filter((m) => m.tags.includes('example'));
+                  for (const m of ex) await api.deleteMemory(m.id);
+                  setNotice(`Struck ${ex.length} example ${ex.length === 1 ? 'entry' : 'entries'}. The ledger is yours.`);
+                  await load();
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              title="Remove the seeded example entries"
+            >
+              Clear examples ✕
+            </button>
+          )}
           {view !== 'topics' &&
             writers.length > 1 &&
             writers.map(([src, n]) => {
@@ -1208,7 +1370,21 @@ export default function Memories({
                     <span className="mt-0.5 block truncate text-[12px] leading-5 text-[var(--text-3)]">{m.content.replace(/\s+/g, ' ')}</span>
                   )}
                 </span>
-                {m.score !== undefined && <span className="mono hidden shrink-0 text-[10.5px] text-[var(--text-3)] sm:inline">{m.score.toFixed(3)}</span>}
+                {m.score !== undefined && (
+                  <span
+                    className="mono hidden shrink-0 text-[10.5px] text-[var(--text-3)] sm:inline"
+                    title={`Matched via ${(m.via ?? []).map((v) => (v === 'vec' ? 'meaning' : 'keywords')).join(' + ') || 'recency'}`}
+                  >
+                    {m.via?.includes('vec') && 'sem '}
+                    {m.via?.includes('fts') && 'kw '}
+                    {m.score.toFixed(3)}
+                  </span>
+                )}
+                {m.pinned && (
+                  <span className="shrink-0 text-[11px]" title="Pinned" aria-label="Pinned">
+                    ★
+                  </span>
+                )}
                 <Stamp source={m.source} />
                 <span
                   className="shrink-0 whitespace-nowrap text-right text-[11px] text-[var(--text-3)]"
@@ -1247,6 +1423,8 @@ export default function Memories({
             [
               ['open', 'Open entry'],
               ['select', selected.has(ctxMenu.m.id) ? 'Deselect' : 'Select'],
+              ['pin', ctxMenu.m.pinned ? 'Unpin' : 'Pin to top'],
+              ['archive', ctxMenu.m.archived ? 'Restore from archive' : 'File to archive'],
               ['title', ctxMenu.m.title ? 'Redraft title' : 'Draft title'],
               ['export', 'Export JSON'],
             ] as const

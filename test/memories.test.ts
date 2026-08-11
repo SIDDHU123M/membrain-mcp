@@ -5,12 +5,14 @@ import {
   updateMemory,
   deleteMemory,
   listMemories,
+  listStale,
   stats,
   reembedAll,
   needsReembed,
   NotFoundError,
   ValidationError,
 } from '../src/core/memories.js';
+import { searchMemories } from '../src/core/search.js';
 import { tempDb, fakeEmbedder } from './helpers.js';
 import type { DB } from '../src/core/db.js';
 
@@ -21,6 +23,25 @@ beforeEach(() => ({ db, file, cleanup } = tempDb()));
 afterEach(() => cleanup());
 
 describe('memories CRUD', () => {
+  it('pin floats to top, archive hides from list and recall, stale skips pinned', async () => {
+    const a = await saveMemory(db, embedder, { content: 'first note', source: 'ui' });
+    const b = await saveMemory(db, embedder, { content: 'second note', source: 'ui' });
+    await updateMemory(db, embedder, a.id, { pinned: true });
+    expect(listMemories(db)[0].id).toBe(a.id); // pinned beats newer
+
+    await updateMemory(db, embedder, b.id, { archived: true });
+    expect(listMemories(db).map((m) => m.id)).not.toContain(b.id);
+    expect(listMemories(db, { archived: true }).map((m) => m.id)).toEqual([b.id]);
+    const res = await searchMemories(db, embedder, { query: 'second note' });
+    expect(res.map((r) => r.id)).not.toContain(b.id);
+
+    db.prepare("UPDATE memories SET updated_at = '2020-01-01T00:00:00.000Z' WHERE id = ?").run(a.id);
+    expect(listStale(db, { days: 30 })).toHaveLength(0); // pinned exempt
+    await updateMemory(db, embedder, a.id, { pinned: false });
+    db.prepare("UPDATE memories SET updated_at = '2020-01-01T00:00:00.000Z' WHERE id = ?").run(a.id);
+    expect(listStale(db, { days: 30 }).map((m) => m.id)).toEqual([a.id]);
+  });
+
   it('save → get round-trip with chunks and vectors', async () => {
     const m = await saveMemory(db, embedder, {
       content: 'user prefers dark mode',

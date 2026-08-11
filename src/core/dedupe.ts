@@ -15,6 +15,8 @@ interface MemoryRow {
   source: string;
   created_at: string;
   updated_at: string;
+  pinned: number;
+  archived: number;
 }
 
 /**
@@ -59,8 +61,8 @@ export function findDuplicates(db: DB, threshold = 0.9, limit = 40): DuplicatePa
     const b = get.get(p.b) as MemoryRow | undefined;
     if (!a || !b) continue;
     out.push({
-      a: { ...a, tags: JSON.parse(a.tags) as string[] },
-      b: { ...b, tags: JSON.parse(b.tags) as string[] },
+      a: { ...a, tags: JSON.parse(a.tags) as string[], pinned: !!a.pinned, archived: !!a.archived },
+      b: { ...b, tags: JSON.parse(b.tags) as string[], pinned: !!b.pinned, archived: !!b.archived },
       similarity: Math.round(p.similarity * 1000) / 1000,
     });
   }

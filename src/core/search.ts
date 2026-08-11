@@ -4,6 +4,8 @@ import type { Memory } from './memories.js';
 
 export interface SearchResult extends Memory {
   score: number;
+  /** recall receipt: which lists surfaced this memory */
+  via: ('vec' | 'fts')[];
 }
 
 // FTS5 MATCH treats quotes/operators specially — quote every term, OR them for recall.
@@ -35,6 +37,8 @@ export async function searchMemories(
   const k = Math.max(topK * 4, 20);
 
   const scores = new Map<number, number>(); // chunk id → RRF score
+  const vecHits = new Set<number>();
+  const ftsHits = new Set<number>();
 
   const hasVecs =
     (db.prepare("SELECT count(*) n FROM sqlite_master WHERE name='chunks_vec'").get() as { n: number })
@@ -46,6 +50,7 @@ export async function searchMemories(
       .all(Buffer.from(new Float32Array(qv).buffer), BigInt(k)) as { rowid: number }[];
     vecRows.forEach((r, rank) => {
       scores.set(r.rowid, (scores.get(r.rowid) ?? 0) + 1 / (RRF_K + rank + 1));
+      vecHits.add(r.rowid);
     });
   }
 
@@ -56,13 +61,15 @@ export async function searchMemories(
       .all(match, k) as { rowid: number }[];
     ftsRows.forEach((r, rank) => {
       scores.set(r.rowid, (scores.get(r.rowid) ?? 0) + 1 / (RRF_K + rank + 1));
+      ftsHits.add(r.rowid);
     });
   }
 
   if (scores.size === 0) return [];
 
-  // chunk → memory, keep the best-scoring chunk per memory
+  // chunk → memory, keep the best-scoring chunk per memory; receipts union per memory
   const byMemory = new Map<number, number>();
+  const viaByMemory = new Map<number, Set<'vec' | 'fts'>>();
   const chunkIds = [...scores.keys()];
   const placeholders = chunkIds.map(() => '?').join(',');
   const chunkRows = db
@@ -71,6 +78,10 @@ export async function searchMemories(
   for (const { id, memory_id } of chunkRows) {
     const s = scores.get(id)!;
     if (s > (byMemory.get(memory_id) ?? 0)) byMemory.set(memory_id, s);
+    const via = viaByMemory.get(memory_id) ?? new Set<'vec' | 'fts'>();
+    if (vecHits.has(id)) via.add('vec');
+    if (ftsHits.has(id)) via.add('fts');
+    viaByMemory.set(memory_id, via);
   }
 
   // fetch candidate memories, then let recency join the fusion as a low-weight
@@ -83,12 +94,14 @@ export async function searchMemories(
     source: string;
     created_at: string;
     updated_at: string;
+    pinned: number;
+    archived: number;
   };
   const getRow = db.prepare('SELECT * FROM memories WHERE id = ?');
   const candidates: { row: Row; score: number }[] = [];
   for (const [memoryId, score] of byMemory.entries()) {
     const row = getRow.get(memoryId) as Row | undefined;
-    if (row) candidates.push({ row, score });
+    if (row && !row.archived) candidates.push({ row, score }); // struck pages stay out of recall
   }
   const RECENCY_WEIGHT = 0.5;
   [...candidates]
@@ -101,7 +114,14 @@ export async function searchMemories(
   for (const { row, score } of candidates.sort((a, b) => b.score - a.score)) {
     const tags = JSON.parse(row.tags) as string[];
     if (opts.tags && opts.tags.length > 0 && !opts.tags.some((t) => tags.includes(t))) continue;
-    results.push({ ...row, tags, score });
+    results.push({
+      ...row,
+      tags,
+      pinned: !!row.pinned,
+      archived: !!row.archived,
+      score,
+      via: [...(viaByMemory.get(row.id) ?? [])],
+    });
     if (results.length >= topK) break;
   }
   return results;

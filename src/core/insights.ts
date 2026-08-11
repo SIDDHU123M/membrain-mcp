@@ -53,18 +53,33 @@ let mapBuilding = false;
 export async function buildMemoryMap(
   db: DB,
   onProgress?: (p: MapProgress) => void,
+  opts: { onlyNew?: boolean } = {},
 ): Promise<MemoryMap> {
   if (mapBuilding) throw new OllamaError('a map build is already running');
   const cfg = await ollamaConfig(db);
   if (!cfg) throw new OllamaError('No AI available — start Ollama or configure a cloud provider in Settings');
-  const rows = db
-    .prepare('SELECT id, content FROM memories ORDER BY id DESC LIMIT ?')
+  // update mode: keep the existing topics, file only entries the map has never seen
+  const cached = opts.onlyNew ? getCachedMap(db) : null;
+  const known = new Set(cached?.categories.flatMap((c) => c.ids) ?? []);
+  let rows = db
+    .prepare('SELECT id, content FROM memories WHERE archived = 0 ORDER BY id DESC LIMIT ?')
     .all(MAP_CAP) as { id: number; content: string }[];
-  if (rows.length === 0) throw new OllamaError('nothing to map — the store is empty');
+  if (cached) rows = rows.filter((r) => !known.has(r.id));
+  if (rows.length === 0) {
+    if (cached) {
+      // nothing new — just refresh the staleness hash
+      const fresh = { ...cached, hash: storeHash(db), stale: false };
+      setSetting(db, 'memory_map', JSON.stringify(fresh));
+      return fresh;
+    }
+    throw new OllamaError('nothing to map — the store is empty');
+  }
 
   mapBuilding = true;
   try {
-    const categories: MapCategory[] = [];
+    const categories: MapCategory[] = cached
+      ? cached.categories.map((c) => ({ ...c, ids: [...c.ids] }))
+      : [];
     const findCat = (name: string) =>
       categories.find((c) => c.name.toLowerCase() === name.trim().toLowerCase());
 

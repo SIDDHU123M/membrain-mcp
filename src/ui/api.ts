@@ -6,7 +6,10 @@ export interface Memory {
   source: string;
   created_at: string;
   updated_at: string;
+  pinned: boolean;
+  archived: boolean;
   score?: number;
+  via?: ('vec' | 'fts')[];
 }
 
 export interface Stats {
@@ -98,16 +101,18 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  memories: (q?: { query?: string; tag?: string }) => {
+  memories: (q?: { query?: string; tag?: string; archived?: boolean }) => {
     const p = new URLSearchParams();
     if (q?.query) p.set('query', q.query);
     if (q?.tag) p.set('tag', q.tag);
+    if (q?.archived) p.set('archived', '1');
     p.set('limit', '100');
     return req<Memory[]>(`/api/memories?${p}`);
   },
+  stale: (days = 90) => req<Memory[]>(`/api/memories/stale?days=${days}`),
   addMemory: (content: string, tags: string[]) =>
     req<Memory>('/api/memories', { method: 'POST', body: JSON.stringify({ content, tags }) }),
-  updateMemory: (id: number, patch: { content?: string; tags?: string[] }) =>
+  updateMemory: (id: number, patch: { content?: string; tags?: string[]; pinned?: boolean; archived?: boolean }) =>
     req<Memory>(`/api/memories/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteMemory: (id: number) => req<{ ok: true }>(`/api/memories/${id}`, { method: 'DELETE' }),
   importFile: (file: File) => {
