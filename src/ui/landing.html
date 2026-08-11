@@ -61,8 +61,12 @@
         transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
       }
       .btn:hover { background: var(--glow); border-color: var(--cream); color: var(--cream); }
-      .btn-solid { background: var(--navy); color: #f4f1e8; border-color: var(--navy); }
-      .btn-solid:hover { background: #274a9e; border-color: #274a9e; }
+      /* solid button owns every state — .btn:hover must never bleed into it */
+      .btn-solid,
+      .btn-solid:hover {
+        background: var(--navy); color: #f6f3ea; border-color: var(--navy);
+      }
+      .btn-solid:hover { background: #2a4da0; border-color: #2a4da0; }
 
       code.pill {
         font-family: var(--mono); font-size: 13px;
