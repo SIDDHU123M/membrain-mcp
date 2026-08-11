@@ -1345,6 +1345,19 @@ export default function Memories({
               {shelf} shelf ✕
             </button>
           )}
+          {view !== 'topics' && visible.length > 0 && (
+            <button
+              className="chip chip-btn"
+              onClick={() =>
+                setSelected((s) =>
+                  s.size === visible.length ? new Set() : new Set(visible.map((m) => m.id)),
+                )
+              }
+              aria-pressed={selected.size === visible.length}
+            >
+              {selected.size === visible.length ? 'Deselect all' : `Select all · ${visible.length}`}
+            </button>
+          )}
           {selected.size > 0 && (
             <>
               <button
