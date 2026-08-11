@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Membrain — one memory, every AI</title>
+    <meta
+      name="description"
+      content="Self-hosted memory for you and your AI agents. One SQLite file, a web ledger, and an MCP endpoint — no accounts, no cloud, works offline."
+    />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>" />
+    <script type="module" src="/landing.ts"></script>
+    <style>
+      /* ————— the night ledger, printed. Canvas = the logo's black. ————— */
+      :root {
+        --bg: #0a0a0a;
+        --sheet: #111110;
+        --cream: #efe8d8;
+        --cream-2: #b3ac9c;
+        --cream-3: #7c7669;
+        --hairline: rgba(239, 232, 216, 0.14);
+        --hairline-strong: rgba(239, 232, 216, 0.3);
+        --glow: rgba(239, 232, 216, 0.06);
+        --serif: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+        --sans: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+        --mono: 'Cascadia Code', ui-monospace, Consolas, monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        background: var(--bg);
+        color: var(--cream);
+        font-family: var(--sans);
+        font-size: 16px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      body::before {
+        content: '';
+        position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.5;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.02 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      main, header, footer { position: relative; z-index: 1; }
+      .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+      h1, h2, h3, .serif { font-family: var(--serif); font-variation-settings: 'SOFT' 50, 'WONK' 0; letter-spacing: -0.01em; }
+      .label {
+        font-size: 11px; font-weight: 650; text-transform: uppercase;
+        letter-spacing: 0.16em; color: var(--cream-3);
+      }
+      .rule-double { border-top: 2px solid var(--cream); border-bottom: 1px solid var(--hairline-strong); height: 5px; }
+
+      a { color: inherit; }
+      .btn, .btn-solid {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 11px 22px; border-radius: 3px; text-decoration: none;
+        font-size: 12.5px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase;
+        border: 1px solid var(--hairline-strong); color: var(--cream);
+        transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+      }
+      .btn:hover { background: var(--glow); border-color: var(--cream-2); }
+      .btn-solid { background: var(--cream); color: #0a0a0a; border-color: var(--cream); }
+      .btn-solid:hover { background: #fff8e8; }
+
+      code.pill {
+        font-family: var(--mono); font-size: 13px;
+        background: var(--sheet); border: 1px solid var(--hairline);
+        border-radius: 3px; padding: 3px 8px; color: var(--cream-2);
+      }
+
+      /* nav */
+      nav { display: flex; align-items: center; gap: 20px; padding: 26px 0; }
+      nav .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+      nav .brand img { height: 40px; width: 40px; object-fit: cover; }
+      nav .brand b { font-family: var(--serif); font-size: 20px; font-weight: 600; }
+      nav .links { margin-left: auto; display: flex; gap: 26px; align-items: center; }
+      nav .links a { text-decoration: none; font-size: 13.5px; color: var(--cream-2); }
+      nav .links a:hover { color: var(--cream); }
+      @media (max-width: 640px) { nav .links a:not(.btn-solid) { display: none; } }
+
+      /* hero */
+      .hero { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 48px; align-items: center; padding: 64px 0 80px; }
+      @media (max-width: 860px) { .hero { grid-template-columns: 1fr; padding-top: 32px; } }
+      .hero h1 { font-size: clamp(42px, 6.4vw, 74px); line-height: 1.03; font-weight: 560; }
+      .hero h1 em { font-style: italic; font-variation-settings: 'SOFT' 90, 'WONK' 1; }
+      .hero .sub { margin-top: 22px; font-size: 17.5px; color: var(--cream-2); max-width: 34em; }
+      .hero .cta { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+      .hero .art { justify-self: center; }
+      .hero .art img { width: min(380px, 80vw); height: auto; display: block; filter: drop-shadow(0 0 60px rgba(239,232,216,0.08)); }
+      .hero .npx {
+        font-family: var(--mono); font-size: 14px; color: var(--cream);
+        background: var(--sheet); border: 1px solid var(--hairline);
+        border-radius: 3px; padding: 11px 18px;
+      }
+      .hero .npx b { color: var(--cream-3); font-weight: 400; user-select: none; }
+
+      /* trust strip */
+      .strip { border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+      .strip .wrap { display: flex; flex-wrap: wrap; gap: 10px 36px; padding: 16px 24px; justify-content: center; }
+      .strip span { font-size: 12.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cream-3); }
+
+      /* sections */
+      section { padding: 76px 0 0; }
+      .sec-head { display: flex; align-items: baseline; gap: 18px; margin-bottom: 8px; }
+      .sec-head h2 { font-size: clamp(26px, 3.4vw, 36px); font-weight: 560; }
+      .sec-head .label { transform: translateY(-4px); }
+      .sec-sub { color: var(--cream-2); max-width: 46em; margin-bottom: 36px; }
+
+      /* feature entries — ruled ledger rows on the page */
+      .features { border-top: 1px solid var(--hairline); }
+      .feature {
+        display: grid; grid-template-columns: 72px 260px 1fr; gap: 24px;
+        padding: 26px 0; border-bottom: 1px solid var(--hairline);
+      }
+      @media (max-width: 780px) { .feature { grid-template-columns: 52px 1fr; } .feature p { grid-column: 2; } }
+      .feature .no { font-family: var(--mono); font-size: 12px; color: var(--cream-3); padding-top: 5px; }
+      .feature h3 { font-size: 19px; font-weight: 600; }
+      .feature h3 small { display: block; font-family: var(--sans); font-size: 11px; font-weight: 650; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cream-3); margin-top: 6px; }
+      .feature p { color: var(--cream-2); font-size: 14.5px; }
+
+      /* how it works */
+      .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+      @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
+      .step { background: var(--sheet); border: 1px solid var(--hairline); border-radius: 4px; padding: 22px; }
+      .step .no { font-family: var(--mono); font-size: 11px; color: var(--cream-3); }
+      .step h3 { font-size: 17px; margin: 8px 0 8px; }
+      .step p { font-size: 13.5px; color: var(--cream-2); }
+      .step pre {
+        margin-top: 14px; background: #070707; border: 1px solid var(--hairline);
+        border-radius: 3px; padding: 12px 14px; overflow-x: auto;
+        font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--cream-2);
+      }
+
+      /* tools table */
+      .tools { border-top: 1px solid var(--hairline); }
+      .tool { display: flex; align-items: baseline; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--hairline); }
+      .tool code { font-family: var(--mono); font-size: 13.5px; color: var(--cream); white-space: nowrap; }
+      .tool .dots { flex: 1; border-bottom: 1px dotted var(--hairline-strong); transform: translateY(-4px); min-width: 30px; }
+      .tool span { font-size: 13.5px; color: var(--cream-2); text-align: right; }
+
+      /* principles */
+      .principles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 48px; border-top: 1px solid var(--hairline); }
+      @media (max-width: 780px) { .principles { grid-template-columns: 1fr; } }
+      .principle { padding: 26px 0; border-bottom: 1px solid var(--hairline); }
+      .principle h3 { font-size: 20px; font-style: italic; font-weight: 530; font-variation-settings: 'SOFT' 90, 'WONK' 1; }
+      .principle p { margin-top: 8px; font-size: 14px; color: var(--cream-2); }
+
+      /* security */
+      .warning { background: var(--sheet); border: 1px solid var(--hairline-strong); border-radius: 4px; padding: 26px; margin-top: 8px; }
+      .warning .stamp {
+        display: inline-block; border: 1.5px solid var(--cream); border-radius: 2px;
+        padding: 2px 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+        text-transform: uppercase; transform: rotate(-1.2deg); margin-bottom: 14px;
+      }
+      .warning p { color: var(--cream-2); font-size: 14.5px; max-width: 56em; }
+      .warning code { font-family: var(--mono); font-size: 13px; color: var(--cream); }
+
+      /* footer */
+      .final { text-align: center; padding: 90px 0 40px; }
+      .final h2 { font-size: clamp(30px, 4.4vw, 46px); font-weight: 560; }
+      .final .cta { margin-top: 28px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+      footer { border-top: 1px solid var(--hairline); margin-top: 60px; }
+      footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 32px; padding: 26px 24px 40px; align-items: center; }
+      footer span { font-size: 12.5px; color: var(--cream-3); }
+      footer .right { margin-left: auto; }
+
+      @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+      .rise { animation: rise 600ms ease-out both; }
+      .rise.d1 { animation-delay: 90ms; } .rise.d2 { animation-delay: 180ms; } .rise.d3 { animation-delay: 280ms; }
+      @media (prefers-reduced-motion: reduce) { .rise { animation: none; } html { scroll-behavior: auto; } }
+    </style>
+  </head>
+  <body>
+    <header class="wrap">
+      <nav>
+        <a class="brand" href="/landing">
+          <img src="./assets/membrain-logo.png" alt="" />
+          <b>Membrain</b>
+        </a>
+        <div class="links">
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="#tools">MCP tools</a>
+          <a class="btn-solid btn" href="/">Open the ledger</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="wrap">
+        <div class="hero">
+          <div>
+            <div class="label rise">Self-hosted · Local-first · MCP</div>
+            <h1 class="rise d1" style="margin-top: 18px">One memory,<br /><em>every</em> AI.</h1>
+            <p class="sub rise d2">
+              Membrain is a memory ledger you run on your own machine. You write to it from a web
+              UI; your agents — Claude, Cursor, anything that speaks MCP — read and write the same
+              store. What one remembers, all of them know.
+            </p>
+            <div class="cta rise d3">
+              <span class="npx"><b>$</b> npx membrain</span>
+              <a class="btn" href="#how">Connect your agents</a>
+            </div>
+          </div>
+          <div class="art rise d2">
+            <img src="./assets/membrain-logo.png" alt="Membrain — half brain, half database" />
+          </div>
+        </div>
+      </div>
+
+      <div class="strip rise d3">
+        <div class="wrap">
+          <span>One SQLite file</span>
+          <span>No accounts</span>
+          <span>No cloud</span>
+          <span>Works offline</span>
+          <span>No telemetry, ever</span>
+        </div>
+      </div>
+
+      <section id="features">
+        <div class="wrap">
+          <div class="rule-double"></div>
+          <div class="sec-head" style="margin-top: 14px">
+            <span class="label">The ledger</span>
+            <h2>Everything a shared brain needs</h2>
+          </div>
+          <p class="sec-sub">
+            Every entry records who wrote it — you, an agent, or an import. The whole store is one
+            file on your disk: copy it and that's a backup, delete it and it's gone.
+          </p>
+
+          <div class="features">
+            <div class="feature">
+              <span class="no">01</span>
+              <h3>Shared memory over MCP<small>agents read &amp; write</small></h3>
+              <p>
+                One config line connects Claude Code, Claude Desktop, Cursor, or any MCP client —
+                Streamable HTTP or stdio. Eight tools, including a one-call
+                <code class="pill">memory_context</code> digest for session starts and bulk saves.
+              </p>
+            </div>
+            <div class="feature">
+              <span class="no">02</span>
+              <h3>Recall that actually finds it<small>hybrid search</small></h3>
+              <p>
+                Semantic vectors (sqlite-vec) and keyword match (FTS5) fused with reciprocal rank
+                fusion, plus a gentle recency boost. Local embeddings by default — no API key, no
+                network.
+              </p>
+            </div>
+            <div class="feature">
+              <span class="no">03</span>
+              <h3>The clerk<small>your local LLM, put to work</small></h3>
+              <p>
+                A local Ollama organizes the store into topics incrementally with live progress,
+                drafts titles one entry at a time, summarizes any scope, and finds duplicate
+                entries by vector similarity for one-click strike-through.
+              </p>
+            </div>
+            <div class="feature">
+              <span class="no">04</span>
+              <h3>Nothing inked unreviewed<small>proposal queue</small></h3>
+              <p>
+                Every change Membrain's own AI wants to make is staged for your accept/reject —
+                old value struck through, new value beside it. Imports work the same way: dropped
+                PDFs and docs become candidate entries you review, edit, and selectively file.
+              </p>
+            </div>
+            <div class="feature">
+              <span class="no">05</span>
+              <h3>The atlas<small>knowledge map</small></h3>
+              <p>
+                The people, projects, tools, and preferences in your store — drawn as an
+                interactive constellation with the relationships between them. Pure visualization;
+                retrieval never depends on it.
+              </p>
+            </div>
+            <div class="feature">
+              <span class="no">06</span>
+              <h3>Skills &amp; agent memory<small>manage the whole setup</small></h3>
+              <p>
+                Edit your agents' SKILL.md files with markdown preview, and pull the memory your
+                agents already keep on disk into the ledger — tracked by content hash so nothing
+                is ever imported twice.
+              </p>
+            </div>
+            <div class="feature">
+              <span class="no">07</span>
+              <h3>Backups you don't think about<small>snapshot on boot</small></h3>
+              <p>
+                A consistent SQLite snapshot on every start (keeping the last five), one-click
+                snapshot downloads, and portable JSON export/import for memories and skills —
+                full or selective.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="how">
+        <div class="wrap">
+          <div class="rule-double"></div>
+          <div class="sec-head" style="margin-top: 14px">
+            <span class="label">Five minutes</span>
+            <h2>How it works</h2>
+          </div>
+          <p class="sec-sub">Fresh install to a memory saved from your agent and visible in the ledger.</p>
+          <div class="steps">
+            <div class="step">
+              <span class="no">STEP 01</span>
+              <h3>Run it</h3>
+              <p>One process serves the web ledger, REST API, and MCP endpoint on localhost.</p>
+              <pre>npx membrain
+# ledger  http://127.0.0.1:7777
+# mcp     http://127.0.0.1:7777/mcp</pre>
+            </div>
+            <div class="step">
+              <span class="no">STEP 02</span>
+              <h3>Connect an agent</h3>
+              <p>Any MCP client. Claude Code is one line:</p>
+              <pre>claude mcp add --transport http \
+  membrain http://127.0.0.1:7777/mcp</pre>
+            </div>
+            <div class="step">
+              <span class="no">STEP 03</span>
+              <h3>Everything remembers</h3>
+              <p>
+                Tell one agent a fact; ask another tomorrow. Watch entries appear in the ledger,
+                stamped with whoever wrote them.
+              </p>
+              <pre>"remember my favorite editor
+ is neovim"
+→ saved · source: mcp:claude-code</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tools">
+        <div class="wrap">
+          <div class="rule-double"></div>
+          <div class="sec-head" style="margin-top: 14px">
+            <span class="label">The contract</span>
+            <h2>MCP tools</h2>
+          </div>
+          <p class="sec-sub">Small surface, written so models reach for them unprompted.</p>
+          <div class="tools">
+            <div class="tool"><code>memory_context(query?)</code><span class="dots"></span><span>one-call session-start digest</span></div>
+            <div class="tool"><code>save_memory(content, tags?)</code><span class="dots"></span><span>store a durable fact</span></div>
+            <div class="tool"><code>save_memories(memories[])</code><span class="dots"></span><span>several facts, one call</span></div>
+            <div class="tool"><code>search_memory(query, top_k?)</code><span class="dots"></span><span>hybrid semantic + keyword recall</span></div>
+            <div class="tool"><code>get_memory(id)</code><span class="dots"></span><span>one entry in full</span></div>
+            <div class="tool"><code>update_memory(id, …)</code><span class="dots"></span><span>correct the record</span></div>
+            <div class="tool"><code>delete_memory(id)</code><span class="dots"></span><span>strike an entry</span></div>
+            <div class="tool"><code>list_memories(limit?, tag?)</code><span class="dots"></span><span>recent entries</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <div class="rule-double"></div>
+          <div class="sec-head" style="margin-top: 14px">
+            <span class="label">Principles</span>
+            <h2>Built on four refusals</h2>
+          </div>
+          <div class="principles">
+            <div class="principle">
+              <h3>“The memory is a file.”</h3>
+              <p>Everything lives in one SQLite database on your disk. No hidden state, no second datastore, nothing you can't copy, inspect, or delete.</p>
+            </div>
+            <div class="principle">
+              <h3>“MCP is the front door for AIs.”</h3>
+              <p>Any MCP-compatible tool connects with one config entry and gets full read–write memory. Same code path as the UI — an agent's entry looks exactly like yours.</p>
+            </div>
+            <div class="principle">
+              <h3>“No accounts, by design.”</h3>
+              <p>It runs on your machine or your private network. Security is the network boundary — localhost, Tailscale, WireGuard — not passwords.</p>
+            </div>
+            <div class="principle">
+              <h3>“Human-inspectable.”</h3>
+              <p>The ledger shows exactly what's stored. Nothing an agent writes is invisible to you, and nothing the AI wants to change is applied without your review.</p>
+            </div>
+          </div>
+
+          <div class="warning">
+            <span class="stamp">Read before deploying</span>
+            <p>
+              There is no auth. Anywhere. The default bind is <code>127.0.0.1</code> and exposing
+              anything else requires the explicit flag pair
+              <code>--host … --i-understand-no-auth</code>. Never put Membrain on a public
+              interface — anyone who can reach the port owns your memory.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div class="wrap">
+        <div class="final">
+          <h2>Give your AIs a memory<br />that belongs to <em class="serif" style="font-style: italic">you</em>.</h2>
+          <div class="cta">
+            <span class="npx" style="font-family: var(--mono)"><b style="color: var(--cream-3)">$</b> npx membrain</span>
+            <a class="btn-solid btn" href="/">Open the ledger</a>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>Membrain — the memory ledger</span>
+        <span>Local-first · Offline-capable · No telemetry</span>
+        <span class="right">One SQLite file. That's the whole cloud.</span>
+      </div>
+    </footer>
+  </body>
+</html>
