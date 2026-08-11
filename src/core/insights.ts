@@ -450,6 +450,17 @@ export function listSummaries(db: DB): SavedSummary[] {
   return [];
 }
 
+/** Rename a saved summary's label in place. */
+export function renameSummary(db: DB, id: string, label: string): SavedSummary | null {
+  const all = listSummaries(db);
+  const target = all.find((x) => x.id === id);
+  if (!target) return null;
+  const next = label.trim().slice(0, 60);
+  if (next) target.label = next;
+  setSetting(db, 'summaries', JSON.stringify(all));
+  return target;
+}
+
 const SUMMARY_KEEP = 12;
 
 /** Summarize the whole store or the given ids; the result is filed under `label` in history. */

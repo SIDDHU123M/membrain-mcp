@@ -196,6 +196,11 @@ export const api = {
       body: JSON.stringify({ ids: ids ?? [], label }),
     }),
   summaries: () => req<{ summaries: SavedSummary[] }>('/api/insights/summaries'),
+  renameSummary: (id: string, label: string) =>
+    req<{ summary: SavedSummary }>(`/api/insights/summaries/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ label }),
+    }),
   llmInfo: () => req<{ llm: { provider: string; model: string } | null }>('/api/llm/info'),
   versions: () =>
     req<{ versions: { version: string; at: string }[]; checksOff?: boolean }>('/api/versions'),

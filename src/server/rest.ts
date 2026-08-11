@@ -40,6 +40,7 @@ import {
   getCachedMap,
   getCachedMindMap,
   listSummaries,
+  renameSummary,
   getProposals,
   proposeTitles,
   resolveProposals,
@@ -360,6 +361,18 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
   });
 
   app.get('/api/insights/summaries', async () => ({ summaries: listSummaries(db) }));
+
+  app.patch<{ Params: { id: string }; Body: { label?: string } }>(
+    '/api/insights/summaries/:id',
+    async (req) => {
+      if (typeof req.body?.label !== 'string' || !req.body.label.trim()) {
+        throw new ValidationError('label must be a non-empty string');
+      }
+      const s2 = renameSummary(db, req.params.id, req.body.label);
+      if (!s2) throw new NotFoundError('summary not found');
+      return { summary: s2 };
+    },
+  );
 
   app.post<{ Body: { ids?: number[]; label?: string } }>('/api/insights/summary', async (req) => {
     const ids = req.body?.ids;

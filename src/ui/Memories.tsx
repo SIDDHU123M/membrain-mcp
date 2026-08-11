@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, type MapCategory, type Memory, type MemoryMap, type Proposal, type SavedSummary } from './api.js';
 import { relativeTime, sourceColor, sourceLabel } from './util.js';
 import { Markdown } from './markdown.js';
+import ClerkWorking from './Working.js';
 
 const parseTags = (s: string) =>
   s
@@ -338,26 +339,6 @@ function Drawer({
   );
 }
 
-function ProgressBar({ done, total, label }: { done: number; total: number; label: string }) {
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  return (
-    <div className="basis-full" role="status" aria-label={label}>
-      <div className="flex items-baseline gap-2 text-[12px] text-[var(--text-2)]">
-        <span className="display italic">{label}</span>
-        <span className="mono ml-auto text-[11px]">
-          {done}/{total} · {pct}%
-        </span>
-      </div>
-      <div className="mt-1 h-[3px] w-full bg-[var(--line)]">
-        <div
-          className="h-full bg-[var(--accent)] transition-[width] duration-300"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 type AiOp = 'map' | 'titles' | 'summary' | 'import' | null;
 
 interface ReviewFact {
@@ -394,6 +375,19 @@ export default function Memories({
     view: SavedSummary | null;
     error?: string;
   } | null>(null);
+  const [renameVal, setRenameVal] = useState<string | null>(null);
+  const applyRename = async () => {
+    if (!sumDrawer?.view || renameVal === null || !renameVal.trim()) return;
+    try {
+      const r = await api.renameSummary(sumDrawer.view.id, renameVal);
+      setSumDrawer((d) => (d?.view ? { ...d, label: r.summary.label, view: r.summary } : d));
+      setSummaries((all) => all.map((x) => (x.id === r.summary.id ? r.summary : x)));
+      setRenameVal(null);
+    } catch (e) {
+      setNotice((e as Error).message);
+    }
+  };
+
   // the docket: review, search, and tick exactly what an AI operation may read
   const [picker, setPicker] = useState<{ op: 'map' | 'mapNew' | 'titles' | 'summary'; label: string; elig: Memory[] } | null>(null);
   const [pickQ, setPickQ] = useState('');
@@ -1065,7 +1059,12 @@ export default function Memories({
               </button>
             )}
           </div>
-          {progress && <ProgressBar {...progress} />}
+          {aiOp && (
+            <ClerkWorking
+              label={aiStatus ?? 'The clerk is working…'}
+              progress={progress ? { done: progress.done, total: progress.total } : undefined}
+            />
+          )}
           <p className="mt-2 text-[11.5px] text-[var(--text-3)]">
             {sealedCount > 0
               ? `${sealedCount} sealed ${sealedCount === 1 ? 'entry stays' : 'entries stay'} out of every AI operation and agent request.`
@@ -1814,16 +1813,9 @@ export default function Memories({
                 </div>
               )}
               {sumDrawer.running ? (
-                <div className="flex items-center gap-3 py-6" role="status">
-                  <span className="relative flex h-2 w-2 shrink-0">
-                    <span className="absolute h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-60" />
-                    <span className="relative h-2 w-2 rounded-full bg-[var(--accent)]" />
-                  </span>
-                  <p className="display gen-shimmer text-[14px] italic">
-                    Reading {sumDrawer.ids?.length ?? memories.length} entries — writing the digest of{' '}
-                    {sumDrawer.label}. Local models take a minute.
-                  </p>
-                </div>
+                <ClerkWorking
+                  label={`Reading ${sumDrawer.ids?.length ?? memories.length} entries — writing the digest of ${sumDrawer.label}. Local models take a minute.`}
+                />
               ) : sumDrawer.error ? (
                 <div className="py-4">
                   <p className="notice text-[13px]">{sumDrawer.error}</p>
@@ -1836,10 +1828,35 @@ export default function Memories({
                 </div>
               ) : sumDrawer.view ? (
                 <>
-                  <p className="label">
-                    Summary of {sumDrawer.view.label} · {sumDrawer.view.count} entries ·{' '}
-                    {relativeTime(sumDrawer.view.at)}
-                  </p>
+                  {renameVal !== null ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="input"
+                        value={renameVal}
+                        onChange={(e) => setRenameVal(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && void applyRename()}
+                        autoFocus
+                        aria-label="New summary name"
+                      />
+                      <button className="btn-primary shrink-0" onClick={() => void applyRename()}>
+                        Save
+                      </button>
+                      <button className="btn shrink-0" onClick={() => setRenameVal(null)}>
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="label">
+                      Summary of {sumDrawer.view.label} · {sumDrawer.view.count} entries ·{' '}
+                      {relativeTime(sumDrawer.view.at)} ·{' '}
+                      <button
+                        className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-[var(--text)]"
+                        onClick={() => setRenameVal(sumDrawer.view!.label)}
+                      >
+                        rename
+                      </button>
+                    </p>
+                  )}
                   <div className="mt-2">
                     <Markdown text={sumDrawer.view.text} />
                   </div>

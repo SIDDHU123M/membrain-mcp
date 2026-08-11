@@ -12,6 +12,7 @@ import {
 import { api, type Memory, type MindMap as MindMapData, type MindMapNode } from './api.js';
 import { kindColor, relativeTime, sourceColor, sourceLabel } from './util.js';
 import { Markdown } from './markdown.js';
+import ClerkWorking from './Working.js';
 
 interface Pos {
   x: number;
@@ -181,6 +182,12 @@ export default function MindMap({
         </div>
         <div className="border-b border-[var(--line-strong)]" aria-hidden="true" />
       </section>
+
+      {building && (
+        <div className="rise">
+          <ClerkWorking label={`The clerk is reading the ledger and drawing your knowledge map… ${elapsed}s`} />
+        </div>
+      )}
 
       {error && (
         <div className="card notice px-4 py-2.5 text-[13px]" role="alert">
