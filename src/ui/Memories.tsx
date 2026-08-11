@@ -968,7 +968,7 @@ export default function Memories({
             )}
             <p
               className={`display min-w-0 break-words text-[13.5px] italic ${
-                aiOp ? 'font-medium text-[var(--text)]' : 'text-[var(--text-2)]'
+                aiOp ? 'gen-shimmer font-medium' : 'text-[var(--text-2)]'
               }`}
               role="status"
               aria-live="polite"
@@ -1806,7 +1806,7 @@ export default function Memories({
                     <span className="absolute h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-60" />
                     <span className="relative h-2 w-2 rounded-full bg-[var(--accent)]" />
                   </span>
-                  <p className="display text-[14px] italic text-[var(--text-2)]">
+                  <p className="display gen-shimmer text-[14px] italic">
                     Reading {sumDrawer.ids?.length ?? memories.length} entries — writing the digest of{' '}
                     {sumDrawer.label}. Local models take a minute.
                   </p>

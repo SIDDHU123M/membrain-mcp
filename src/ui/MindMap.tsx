@@ -70,6 +70,14 @@ export default function MindMap({
     return () => clearInterval(t);
   }, [building]);
 
+  // Esc closes the entity drawer
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSelected(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selected]);
+
   // fetch the memories behind the selected node
   useEffect(() => {
     if (!selected) return setNodeMemories([]);
@@ -155,7 +163,10 @@ export default function MindMap({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5">
           <div className="min-w-0 flex-1">
             <span className="label">The atlas</span>
-            <p className="display mt-0.5 text-[13.5px] italic text-[var(--text-2)]" role="status">
+            <p
+              className={`display mt-0.5 text-[13.5px] italic ${building ? 'gen-shimmer' : 'text-[var(--text-2)]'}`}
+              role="status"
+            >
               {building
                 ? `The clerk is reading the ledger and drawing your knowledge map… ${elapsed}s`
                 : map
@@ -191,12 +202,14 @@ export default function MindMap({
         </div>
       )}
 
-      <div className={`grid gap-3 ${selected ? 'lg:grid-cols-[1fr_320px]' : ''}`}>
+      <div>
+        {/* the atlas gets the whole desk — node details open as a drawer, never
+            by shrinking the canvas */}
         <div className="card overflow-hidden">
           {map ? (
             <svg
               viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
-              className="h-[62vh] w-full cursor-grab select-none active:cursor-grabbing"
+              className="h-[calc(100vh-17rem)] min-h-[420px] w-full cursor-grab select-none active:cursor-grabbing"
               role="img"
               aria-label="Knowledge map of your memories"
               onPointerDown={(e) => {
@@ -344,7 +357,7 @@ export default function MindMap({
               })}
             </svg>
           ) : (
-            <div className="flex h-[62vh] items-center justify-center p-10 text-center">
+            <div className="flex h-[calc(100vh-17rem)] min-h-[420px] items-center justify-center p-10 text-center">
               <div>
                 <p className="display text-[16px] text-[var(--text-2)]">No map drawn yet.</p>
                 <p className="mx-auto mt-2 max-w-sm text-[13px] leading-6 text-[var(--text-3)]">
@@ -358,16 +371,26 @@ export default function MindMap({
         </div>
 
         {selected && (
-          <aside className="card max-h-[62vh] overflow-y-auto p-4" aria-label="Selected entity">
-            <div className="flex items-center gap-2">
-              <h3 className="display text-[15px] font-semibold">{selected.label}</h3>
-              <span
-                className="chip ml-auto"
-                style={{ borderColor: `${kindColor(selected.kind)}50`, color: kindColor(selected.kind) }}
-              >
-                {selected.kind}
-              </span>
-            </div>
+          <>
+            <div className="drawer-scrim" onClick={() => setSelected(null)} aria-hidden="true" />
+            <aside className="drawer" role="dialog" aria-modal="true" aria-label={`Entity ${selected.label}`}>
+              <header className="flex items-center gap-2.5 border-b border-[var(--line)] px-6 py-4">
+                <h3 className="display text-[16px] font-semibold">{selected.label}</h3>
+                <span
+                  className="chip"
+                  style={{ borderColor: `${kindColor(selected.kind)}50`, color: kindColor(selected.kind) }}
+                >
+                  {selected.kind}
+                </span>
+                <button
+                  className="ml-auto cursor-pointer text-[18px] leading-none text-[var(--text-3)] hover:text-[var(--text)]"
+                  onClick={() => setSelected(null)}
+                  aria-label="Close entity"
+                >
+                  ✕
+                </button>
+              </header>
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             {map && (
               <ul className="mt-2.5 space-y-1">
                 {map.edges
@@ -429,7 +452,9 @@ export default function MindMap({
                 </p>
               )}
             </div>
-          </aside>
+              </div>
+            </aside>
+          </>
         )}
       </div>
     </div>

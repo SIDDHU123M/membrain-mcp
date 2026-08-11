@@ -465,6 +465,33 @@ code.pill {
     outline-color 0.4s ease;
 }
 
+/* generating: ink shimmering across the words while the clerk writes */
+.gen-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--text-3) 0%,
+    var(--accent) 35%,
+    var(--text) 50%,
+    var(--accent) 65%,
+    var(--text-3) 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gen-sweep 1.8s linear infinite;
+}
+@keyframes gen-sweep {
+  to { background-position: -220% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gen-shimmer {
+    animation: none;
+    background: none;
+    color: var(--text-2);
+  }
+}
+
 /* a fresh entry arrives with a wash of ink, then dries into the page */
 .wire-fresh {
   animation: wire-in 2.6s ease-out both;
