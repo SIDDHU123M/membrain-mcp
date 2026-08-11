@@ -216,11 +216,11 @@ export default function MindMap() {
                   return;
                 }
                 if (!dragging.current) return;
-                setViewBox((v) => ({
-                  ...v,
-                  x: v.x - (e.clientX - dragging.current!.x) * scale,
-                  y: v.y - (e.clientY - dragging.current!.y) * scale,
-                }));
+                // compute the delta NOW — the updater runs later, when the ref may
+                // already be nulled by pointerup (the old null.x crash)
+                const dx = (e.clientX - dragging.current.x) * scale;
+                const dy = (e.clientY - dragging.current.y) * scale;
+                setViewBox((v) => ({ ...v, x: v.x - dx, y: v.y - dy }));
                 dragging.current = { x: e.clientX, y: e.clientY };
               }}
               onPointerUp={() => {
