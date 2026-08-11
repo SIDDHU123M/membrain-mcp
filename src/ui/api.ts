@@ -27,6 +27,8 @@ export interface Stats {
   chunks: number;
   dbSizeBytes: number;
   embeddingModel: string | null;
+  version?: string | null;
+  latest?: string | null;
 }
 
 export interface SkillInfo {

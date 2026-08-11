@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
   EDITABLE_SETTINGS,
   getEditableSettings,
+  getSetting,
   setSetting,
   type DB,
 } from '../core/db.js';
@@ -51,6 +52,26 @@ export interface Ctx {
   embedder: Embedder;
   dbFile: string;
   readonlySkills?: boolean;
+  version?: string;
+}
+
+// Stale binaries caused every "feature not showing" report — so the app tells
+// on itself. One metadata GET to the npm registry (package name only, nothing
+// else sent), cached 6h, disable with settings update_check='off'.
+let latestCache: { value: string | null; at: number } = { value: null, at: 0 };
+export async function checkLatestVersion(db: DB): Promise<string | null> {
+  if (getSetting(db, 'update_check') === 'off') return null;
+  if (Date.now() - latestCache.at < 6 * 3600_000) return latestCache.value;
+  try {
+    const res = await fetch('https://registry.npmjs.org/membrain-mcp/latest', {
+      signal: AbortSignal.timeout(3000),
+    });
+    const j = (await res.json()) as { version?: string };
+    latestCache = { value: typeof j.version === 'string' ? j.version : null, at: Date.now() };
+  } catch {
+    latestCache = { value: null, at: Date.now() };
+  }
+  return latestCache.value;
 }
 
 // Routes stay thin: parse request → call core → shape response. Logic lives in core/.
@@ -152,7 +173,11 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     },
   );
 
-  app.get('/api/stats', async () => stats(db, dbFile));
+  app.get('/api/stats', async () => ({
+    ...stats(db, dbFile),
+    version: ctx.version ?? null,
+    latest: await checkLatestVersion(db),
+  }));
 
   // ---- skills management (files on disk, not memory DB) ----
 

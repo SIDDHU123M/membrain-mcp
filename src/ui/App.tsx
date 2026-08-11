@@ -161,7 +161,20 @@ export default function App() {
                   </dd>
                 </div>
               )}
+              {stats.version && (
+                <div className="leader">
+                  <dt>Version</dt>
+                  <span className="leader-dots" aria-hidden="true" />
+                  <dd className="mono">v{stats.version}</dd>
+                </div>
+              )}
             </dl>
+            {stats.latest && stats.version && stats.latest !== stats.version && (
+              <p className="mt-2.5 rounded border border-[var(--warn)] px-2.5 py-2 text-[11px] leading-4" style={{ color: 'var(--warn)' }}>
+                v{stats.latest} is out — run{' '}
+                <code className="mono">npm i -g membrain-mcp@{stats.latest}</code>, restart, refresh.
+              </p>
+            )}
           )}
           <button
             className="btn mt-4 w-full"

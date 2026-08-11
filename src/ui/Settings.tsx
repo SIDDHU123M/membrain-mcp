@@ -347,6 +347,17 @@ export default function Settings() {
               onChange={(e) => void importJson(e.target.files?.[0], 'skills')}
             />
           </label>
+          <div className="sm:col-span-2">
+            <label className="label mb-1.5">Check for updates</label>
+            <select
+              className="input"
+              value={values.update_check === 'off' ? 'off' : 'on'}
+              onChange={(e) => set('update_check', e.target.value)}
+            >
+              <option value="on">On — ask npm for the latest version (sends only the package name)</option>
+              <option value="off">Off — never call out; you check versions yourself</option>
+            </select>
+          </div>
           <button
             className="btn w-full justify-center sm:col-span-2"
             onClick={() => {

@@ -9,7 +9,7 @@ import { getSetting, openDb, setSetting } from '../core/db.js';
 import { getEmbedder, getLocalEmbedder } from '../core/embeddings.js';
 import { needsReembed, reembedAll } from '../core/memories.js';
 import { snapshotOnBoot } from '../core/backup.js';
-import { registerRest, type Ctx } from './rest.js';
+import { checkLatestVersion, registerRest, type Ctx } from './rest.js';
 import { registerMcpHttp, runStdio } from './mcp.js';
 
 function arg(name: string): string | undefined {
@@ -106,7 +106,7 @@ async function main() {
     setSetting(db, 'seeded', '1');
   }
 
-  const ctx: Ctx = { db, embedder, dbFile, readonlySkills: has('--readonly-skills') };
+  const ctx: Ctx = { db, embedder, dbFile, readonlySkills: has('--readonly-skills'), version: pkgVersion() };
 
   if (stdio) {
     await runStdio(ctx);
@@ -143,6 +143,12 @@ async function main() {
   await app.listen({ host, port });
   const uiUrl = `http://${host === '0.0.0.0' ? '127.0.0.1' : host}:${port}`;
   log(`membrain: UI      ${uiUrl}`);
+  // stale binaries caused enough grief to warrant telling on ourselves at boot
+  void checkLatestVersion(db).then((latest) => {
+    if (latest && latest !== pkgVersion()) {
+      log(`membrain: v${latest} is available (you run v${pkgVersion()}) — npm i -g membrain-mcp@${latest}`);
+    }
+  });
   log(`membrain: MCP     ${uiUrl}/mcp`);
   log(`membrain: REST    ${uiUrl}/api/memories`);
 
