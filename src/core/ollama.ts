@@ -1,7 +1,13 @@
 import { type DB, getSetting } from './db.js';
 
 /** Any LLM-backend failure (local or cloud) — REST maps this to 503. */
-export class OllamaError extends Error {}
+export class OllamaError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+  }
+}
 
 export type LlmKind = 'ollama' | 'openai' | 'anthropic';
 
@@ -84,7 +90,7 @@ async function ollamaGen(cfg: LlmConfig, prompt: string, opts: GenOpts): Promise
     }),
     signal: AbortSignal.timeout(opts.timeoutMs ?? 180_000),
   });
-  if (!res.ok) throw new OllamaError(`ollama ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new OllamaError(`ollama ${res.status}: ${await res.text()}`, res.status);
   const json = (await res.json()) as { response: string };
   return stripThink(json.response);
 }
@@ -104,7 +110,7 @@ async function openaiGen(cfg: LlmConfig, prompt: string, opts: GenOpts): Promise
     }),
     signal: AbortSignal.timeout(opts.timeoutMs ?? 180_000),
   });
-  if (!res.ok) throw new OllamaError(`${new URL(base).host} ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new OllamaError(`${new URL(base).host} ${res.status}: ${await res.text()}`, res.status);
   const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const text = json.choices?.[0]?.message?.content;
   if (typeof text !== 'string') throw new OllamaError('provider returned no content');
@@ -132,25 +138,44 @@ async function anthropicGen(cfg: LlmConfig, prompt: string, opts: GenOpts): Prom
     }),
     signal: AbortSignal.timeout(opts.timeoutMs ?? 180_000),
   });
-  if (!res.ok) throw new OllamaError(`anthropic ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new OllamaError(`anthropic ${res.status}: ${await res.text()}`, res.status);
   const json = (await res.json()) as { content?: { type: string; text?: string }[] };
   const text = json.content?.find((c) => c.type === 'text')?.text;
   if (typeof text !== 'string') throw new OllamaError('provider returned no content');
   return stripThink(text);
 }
 
-/** Generate with whatever brain is configured. Callers resolve cfg once per operation. */
+const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Generate with whatever brain is configured. Callers resolve cfg once per
+ * operation. Transient provider errors (NVIDIA's "Already borrowed" 500s,
+ * rate limits, gateway blips) are retried with backoff so a single hiccup
+ * doesn't abort a long batched run.
+ */
 export async function ollamaGenerate(
   cfg: LlmConfig,
   prompt: string,
   opts: GenOpts = {},
 ): Promise<string> {
-  try {
-    if (cfg.kind === 'openai') return await openaiGen(cfg, prompt, opts);
-    if (cfg.kind === 'anthropic') return await anthropicGen(cfg, prompt, opts);
-    return await ollamaGen(cfg, prompt, opts);
-  } catch (err) {
-    if (err instanceof OllamaError) throw err;
-    throw new OllamaError(`${cfg.kind} request failed: ${(err as Error).message}`);
+  const MAX = 3;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      if (cfg.kind === 'openai') return await openaiGen(cfg, prompt, opts);
+      if (cfg.kind === 'anthropic') return await anthropicGen(cfg, prompt, opts);
+      return await ollamaGen(cfg, prompt, opts);
+    } catch (err) {
+      const e =
+        err instanceof OllamaError
+          ? err
+          : new OllamaError(`${cfg.kind} request failed: ${(err as Error).message}`);
+      if (attempt < MAX && e.status !== undefined && RETRYABLE.has(e.status)) {
+        console.error(`[ai] transient ${e.status} from provider, retry ${attempt}/${MAX - 1}`);
+        await sleep(attempt * 2000);
+        continue;
+      }
+      throw e;
+    }
   }
 }
