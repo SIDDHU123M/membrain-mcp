@@ -1227,7 +1227,14 @@ export default function Memories({
         </div>
         <div className="seg" role="group" aria-label="Shelf">
           {(['live', 'pinned', 'archived'] as const).map((s) => (
-            <button key={s} onClick={() => setShelf(s)} aria-pressed={shelf === s} className={shelf === s ? 'seg-on' : ''}>
+            <button
+              key={s}
+              onClick={() => setShelf(s)}
+              aria-pressed={shelf === s}
+              className={shelf === s ? 'seg-on' : ''}
+              // off the live shelf the whole view changes — make the selection loud
+              style={shelf === s && s !== 'live' ? { color: 'var(--accent)' } : undefined}
+            >
               {s}
             </button>
           ))}
@@ -1280,6 +1287,16 @@ export default function Memories({
           {category && (
             <button className="chip chip-btn chip-active" onClick={() => setCategory(null)} aria-label={`Clear topic filter ${category.name}`}>
               {category.name} ✕
+            </button>
+          )}
+          {shelf !== 'live' && (
+            <button
+              className="chip chip-btn chip-active"
+              onClick={() => setShelf('live')}
+              aria-label="Back to the live shelf"
+              style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
+            >
+              {shelf} shelf ✕
             </button>
           )}
           {selected.size > 0 && (
