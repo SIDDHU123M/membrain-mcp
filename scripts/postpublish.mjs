@@ -7,16 +7,17 @@ import fs from 'node:fs';
 const { name, version } = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const spec = `${name}@${version}`;
 
-const TRIES = 6;
+// mirrors have taken 3-4 minutes to sync; keep trying for ~5
+const TRIES = 20;
 for (let attempt = 1; attempt <= TRIES; attempt++) {
   try {
-    execSync(`npm install -g ${spec}`, { stdio: 'inherit' });
+    execSync(`npm install -g ${spec}`, { stdio: attempt === 1 ? 'inherit' : 'pipe' });
     console.log(`postpublish: global ${spec} installed`);
     process.exit(0);
   } catch {
     if (attempt < TRIES) {
       console.log(`postpublish: registry not ready yet, retrying (${attempt}/${TRIES})...`);
-      await new Promise((r) => setTimeout(r, 10000));
+      await new Promise((r) => setTimeout(r, 15000));
     }
   }
 }
