@@ -85,7 +85,7 @@ export default function Tour({
       {/* light veil — the real app stays visible behind it */}
       <div className="absolute inset-0 bg-[var(--bg)]/55" onClick={finish} aria-hidden="true" />
 
-      <div className="card absolute bottom-6 left-1/2 w-[min(30rem,92vw)] -translate-x-1/2 p-5 md:bottom-10">
+      <div className="card absolute bottom-4 left-1/2 max-h-[85vh] w-[min(30rem,92vw)] -translate-x-1/2 overflow-y-auto p-5 md:bottom-10">
         <div className="rule-double" aria-hidden="true" />
         <div className="flex items-baseline gap-3 pt-3">
           <span className="label">
