@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/SIDDHU123M/membrain-mcp/master/assets/membrain-logo.png" alt="Membrain" width="300" />
+<img src="assets/membrain-logo.png" alt="Membrain" width="300" />
 
 # Membrain
 
@@ -9,7 +9,6 @@
 *A self-hosted memory ledger you run on your own machine. Your agents share it over MCP.*
 
 [![npm](https://img.shields.io/npm/v/membrain-mcp?style=flat-square&color=1e3a8a&label=npm)](https://www.npmjs.com/package/membrain-mcp)
-[![license](https://img.shields.io/badge/license-MIT-1e3a8a?style=flat-square)](LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A520-1e3a8a?style=flat-square)](package.json)
 [![MCP](https://img.shields.io/badge/protocol-MCP-1e3a8a?style=flat-square)](https://modelcontextprotocol.io)
 [![DevLune](https://img.shields.io/badge/built%20by-DevLune-4F8EF7?style=flat-square)](https://devlune.in)
@@ -191,7 +190,6 @@ Keep the port binding on `127.0.0.1`. The container boundary is not an auth laye
 ## Development
 
 ```bash
-git clone https://github.com/SIDDHU123M/membrain-mcp.git && cd membrain-mcp
 npm install
 npm run dev        # server via tsx
 npm test           # vitest, 50 tests, no network
@@ -211,6 +209,6 @@ agent connection details in `docs/connect-agents.md`.
 
 [devlune.in](https://devlune.in) · [@dev.lune](https://instagram.com/dev.lune) · [sidharth@devlune.in](mailto:sidharth@devlune.in)
 
-MIT © DevLune
+© DevLune. All rights reserved.
 
 </div>

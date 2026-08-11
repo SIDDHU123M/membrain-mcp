@@ -13,15 +13,7 @@
     "local-first"
   ],
   "type": "module",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/SIDDHU123M/membrain-mcp.git"
-  },
-  "homepage": "https://github.com/SIDDHU123M/membrain-mcp#readme",
-  "bugs": {
-    "url": "https://github.com/SIDDHU123M/membrain-mcp/issues"
-  },
+  "license": "UNLICENSED",
   "bin": {
     "membrain": "dist/server/index.js"
   },
