@@ -122,6 +122,50 @@ export function Markdown({ text }: { text: string }) {
       );
       continue;
     }
+    if (/^\s*\|/.test(line)) {
+      const rows: string[][] = [];
+      while (i < lines.length && /^\s*\|/.test(lines[i])) {
+        if (!/^\s*\|[\s\-:|]+\|\s*$/.test(lines[i])) {
+          rows.push(
+            lines[i]
+              .trim()
+              .replace(/^\||\|$/g, '')
+              .split('|')
+              .map((c) => c.trim()),
+          );
+        }
+        i++;
+      }
+      if (rows.length > 0) {
+        blocks.push(
+          <div key={k++} className="my-3 overflow-x-auto">
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr>
+                  {rows[0].map((c, j) => (
+                    <th key={j} className="label border-b-2 border-[var(--text)] px-2.5 py-1.5 text-left">
+                      {inline(c)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.slice(1).map((r, ri) => (
+                  <tr key={ri}>
+                    {r.map((c, j) => (
+                      <td key={j} className="border-b border-[var(--line)] px-2.5 py-1.5 align-top text-[var(--text-2)]">
+                        {inline(c)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>,
+        );
+      }
+      continue;
+    }
     if (line.trim() === '') {
       i++;
       continue;

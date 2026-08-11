@@ -6,6 +6,7 @@ import Memories from './Memories.js';
 import MindMap from './MindMap.js';
 import Skills from './Skills.js';
 import AgentImport from './AgentImport.js';
+import Docs from './Docs.js';
 import Settings from './Settings.js';
 
 const TABS = [
@@ -13,7 +14,8 @@ const TABS = [
   { no: '02', name: 'Map' },
   { no: '03', name: 'Skills' },
   { no: '04', name: 'Agent Import' },
-  { no: '05', name: 'Settings' },
+  { no: '05', name: 'Docs' },
+  { no: '06', name: 'Settings' },
 ] as const;
 type Tab = (typeof TABS)[number]['name'];
 
@@ -125,6 +127,7 @@ export default function App() {
         {tab === 'Map' && <MindMap />}
         {tab === 'Skills' && <Skills />}
         {tab === 'Agent Import' && <AgentImport onImported={refreshStats} />}
+        {tab === 'Docs' && <Docs />}
         {tab === 'Settings' && <Settings />}
       </main>
     </div>
