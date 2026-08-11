@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 import { type DB, getSetting, setSetting } from './db.js';
+import type { Embedder } from './embeddings.js';
+import { saveMemory } from './memories.js';
 import { OllamaError, ollamaConfig, ollamaGenerate } from './ollama.js';
 
 export interface MapCategory {
@@ -169,12 +171,14 @@ export async function buildMemoryMap(
 
 export interface Proposal {
   id: string;
-  memoryId: number;
-  kind: 'title';
+  memoryId: number; // 0 for kind 'save' — no memory exists yet
+  kind: 'title' | 'save';
   old: string | null;
-  next: string;
-  model: string;
+  next: string; // for 'save': the full content to be saved
+  model: string; // for 'save': the writer (e.g. mcp:claude-code)
   createdAt: string;
+  tags?: string[];
+  source?: string;
 }
 
 export function getProposals(db: DB): Proposal[] {
@@ -186,12 +190,33 @@ function saveProposals(db: DB, proposals: Proposal[]): void {
   setSetting(db, 'ai_proposals', JSON.stringify(proposals));
 }
 
-/** Accept (apply) or reject (drop) proposals by id. Skips memories that no longer exist. */
-export function resolveProposals(
+/** Stage an agent's save for review instead of writing it (settings mcp_writes = staged). */
+export function stageSave(
   db: DB,
+  input: { content: string; tags?: string[]; source: string },
+): Proposal {
+  const p: Proposal = {
+    id: crypto.randomUUID(),
+    memoryId: 0,
+    kind: 'save',
+    old: null,
+    next: input.content,
+    model: input.source,
+    createdAt: new Date().toISOString(),
+    tags: input.tags,
+    source: input.source,
+  };
+  saveProposals(db, [...getProposals(db), p]);
+  return p;
+}
+
+/** Accept (apply) or reject (drop) proposals by id. Skips memories that no longer exist. */
+export async function resolveProposals(
+  db: DB,
+  embedder: Embedder,
   ids: string[],
   accept: boolean,
-): { resolved: number; applied: number } {
+): Promise<{ resolved: number; applied: number }> {
   const wanted = new Set(ids);
   const all = getProposals(db);
   let applied = 0;
@@ -206,6 +231,14 @@ export function resolveProposals(
     resolved++;
     if (accept && p.kind === 'title') {
       applied += upd.run(p.next, p.memoryId).changes;
+    }
+    if (accept && p.kind === 'save') {
+      await saveMemory(db, embedder, {
+        content: p.next,
+        tags: p.tags,
+        source: p.source ?? 'import',
+      });
+      applied++;
     }
   }
   saveProposals(db, rest);

@@ -47,11 +47,13 @@ export interface MemoryMap {
 export interface Proposal {
   id: string;
   memoryId: number;
-  kind: 'title';
+  kind: 'title' | 'save';
   old: string | null;
   next: string;
   model: string;
   createdAt: string;
+  tags?: string[];
+  source?: string;
 }
 
 export type NodeKind = 'person' | 'project' | 'tool' | 'preference' | 'topic' | 'fact';

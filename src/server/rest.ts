@@ -302,7 +302,7 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     if (!Array.isArray(ids) || ids.some((i) => typeof i !== 'string')) {
       throw new ValidationError('ids must be an array of strings');
     }
-    return resolveProposals(db, ids, accept === true);
+    return resolveProposals(db, embedder, ids, accept === true);
   });
 
   app.get('/api/insights/summary', async () => ({ summary: getLastSummary(db) }));

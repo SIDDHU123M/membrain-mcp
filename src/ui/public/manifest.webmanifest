@@ -1,0 +1,12 @@
+{
+  "name": "Membrain — the memory ledger",
+  "short_name": "Membrain",
+  "description": "Self-hosted memory you share with your AI agents.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f1e8",
+  "theme_color": "#1c1917",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -13,6 +13,8 @@ import {
   listMemories,
 } from '../core/memories.js';
 import { searchMemories } from '../core/search.js';
+import { stageSave } from '../core/insights.js';
+import { getSetting } from '../core/db.js';
 import type { Ctx } from './rest.js';
 
 function text(data: unknown) {
@@ -36,6 +38,15 @@ export function buildMcpServer(ctx: Ctx): McpServer {
       },
     },
     async ({ content, tags }) => {
+      // settings mcp_writes='staged': agent saves go to the review queue instead
+      if (getSetting(db, 'mcp_writes') === 'staged') {
+        const p = stageSave(db, { content, tags, source: source() });
+        return text({
+          staged: true,
+          proposalId: p.id,
+          note: 'This ledger stages agent writes — the user will review and approve it in the web UI.',
+        });
+      }
       const m = await saveMemory(db, embedder, { content, tags, source: source() });
       return text({ id: m.id });
     },
@@ -135,6 +146,16 @@ export function buildMcpServer(ctx: Ctx): McpServer {
       },
     },
     async ({ memories }) => {
+      if (getSetting(db, 'mcp_writes') === 'staged') {
+        const proposalIds = memories.map(
+          (m) => stageSave(db, { ...m, source: source() }).id,
+        );
+        return text({
+          staged: true,
+          proposalIds,
+          note: 'This ledger stages agent writes — the user will review and approve them in the web UI.',
+        });
+      }
       const ids: number[] = [];
       for (const m of memories) {
         ids.push((await saveMemory(db, embedder, { ...m, source: source() })).id);

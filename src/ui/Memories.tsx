@@ -415,6 +415,17 @@ export default function Memories({
     }
   }, [jumpMemory, onJumpConsumed]);
 
+  // [[wikilink]] clicked anywhere markdown renders → recall that name
+  useEffect(() => {
+    const onLink = (e: Event) => {
+      setDrawer(null);
+      setQuery((e as CustomEvent<string>).detail);
+      document.getElementById('recall-input')?.focus();
+    };
+    window.addEventListener('membrain:wikilink', onLink);
+    return () => window.removeEventListener('membrain:wikilink', onLink);
+  }, []);
+
   const load = useCallback(async () => {
     setMemories(
       await api.memories({
@@ -434,6 +445,8 @@ export default function Memories({
   // the wire: when any writer touches the store (an agent over MCP, a script,
   // another tab), refresh the ledger and flash the arriving entry.
   const [fresh, setFresh] = useState<Set<number>>(new Set());
+  const [wireLog, setWireLog] = useState<{ type: string; id: number; source?: string; at: number }[]>([]);
+  const [showWire, setShowWire] = useState(false);
   const loadRef = useRef(load);
   useEffect(() => {
     loadRef.current = load;
@@ -442,7 +455,8 @@ export default function Memories({
     const es = new EventSource('/api/events');
     let t: ReturnType<typeof setTimeout> | null = null;
     es.addEventListener('memory', (ev) => {
-      const e = JSON.parse((ev as MessageEvent).data) as { type: string; id: number };
+      const e = JSON.parse((ev as MessageEvent).data) as { type: string; id: number; source?: string };
+      setWireLog((l) => [{ ...e, at: Date.now() }, ...l].slice(0, 20));
       if (e.type !== 'deleted') {
         setFresh((s) => new Set(s).add(e.id));
         setTimeout(
@@ -969,13 +983,25 @@ export default function Memories({
               return (
                 <div key={p.id} className="flex items-center gap-2.5 py-2">
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13px]">
-                      {p.old && <span className="text-[var(--text-3)] line-through">{p.old} </span>}
-                      <span className="display font-semibold">{p.next}</span>
-                    </div>
-                    <p className="mt-0.5 truncate text-[11.5px] text-[var(--text-3)]">
-                      #{String(p.memoryId).padStart(3, '0')} · {m?.content ?? '(entry not in current view)'}
-                    </p>
+                    {p.kind === 'save' ? (
+                      <>
+                        <div className="line-clamp-2 text-[13px]">{p.next}</div>
+                        <p className="mt-0.5 truncate text-[11.5px] text-[var(--text-3)]">
+                          new entry from <span style={{ color: sourceColor(p.source ?? '') }}>{sourceLabel(p.source ?? '')}</span>
+                          {p.tags?.length ? ` · ${p.tags.join(', ')}` : ''}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-[13px]">
+                          {p.old && <span className="text-[var(--text-3)] line-through">{p.old} </span>}
+                          <span className="display font-semibold">{p.next}</span>
+                        </div>
+                        <p className="mt-0.5 truncate text-[11.5px] text-[var(--text-3)]">
+                          #{String(p.memoryId).padStart(3, '0')} · {m?.content ?? '(entry not in current view)'}
+                        </p>
+                      </>
+                    )}
                   </div>
                   <button className="btn shrink-0 px-2" onClick={() => void resolve([p.id], true)} aria-label={`Accept: ${p.next}`}>
                     ✓
@@ -1033,6 +1059,51 @@ export default function Memories({
               </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* the wire — live event log; every write from any writer, as it lands */}
+      {wireLog.length > 0 && (
+        <section className="card rise p-3" aria-label="The wire — live activity">
+          <button
+            className="flex w-full cursor-pointer items-center gap-2 text-left"
+            onClick={() => setShowWire((s) => !s)}
+            aria-expanded={showWire}
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-60" />
+              <span className="relative h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+            </span>
+            <span className="label">The wire</span>
+            <span className="text-[11.5px] text-[var(--text-3)]">
+              {wireLog.length} {wireLog.length === 1 ? 'event' : 'events'} this session
+            </span>
+            <span className="ml-auto text-[11px] text-[var(--text-3)]">{showWire ? 'hide' : 'show'}</span>
+          </button>
+          {showWire && (
+            <div className="rowlist mt-2 max-h-[26vh] overflow-y-auto">
+              {wireLog.map((e, idx) => (
+                <div key={`${e.at}-${idx}`} className="flex items-center gap-2.5 py-1.5 text-[12px]">
+                  <span className="mono text-[10.5px] text-[var(--text-3)]">
+                    {new Date(e.at).toLocaleTimeString()}
+                  </span>
+                  <span className="mono">
+                    {e.type === 'saved' ? 'recorded' : e.type === 'updated' ? 'amended' : 'struck'}
+                  </span>
+                  <button
+                    className="mono cursor-pointer underline decoration-dotted underline-offset-2"
+                    onClick={() => {
+                      const m = byId.get(e.id);
+                      if (m) setDrawer(m);
+                    }}
+                  >
+                    #{String(e.id).padStart(3, '0')}
+                  </button>
+                  {e.source && <Stamp source={e.source} />}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 

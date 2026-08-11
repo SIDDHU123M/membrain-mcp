@@ -8,7 +8,8 @@ function inline(text: string, key = 0): ReactNode[] {
   const out: ReactNode[] = [];
   let rest = text;
   let k = key;
-  const pattern = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(\[([^\]]+)\]\(([^)]+)\))/;
+  const pattern =
+    /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(\[\[([^\]]+)\]\])|(\[([^\]]+)\]\(([^)]+)\))/;
   while (rest.length > 0) {
     const m = rest.match(pattern);
     if (!m || m.index === undefined) {
@@ -29,16 +30,31 @@ function inline(text: string, key = 0): ReactNode[] {
           {tok.slice(2, -2)}
         </strong>,
       );
+    } else if (tok.startsWith('[[')) {
+      // [[wikilink]] — the agent-memory cross-reference convention. Clicking
+      // recalls the name; Memories listens for the event wherever this renders.
+      const name = m[5];
+      out.push(
+        <button
+          key={k++}
+          type="button"
+          className="cursor-pointer text-[var(--accent-text)] underline decoration-dotted underline-offset-2"
+          onClick={() => window.dispatchEvent(new CustomEvent('membrain:wikilink', { detail: name }))}
+          title={`Recall "${name}"`}
+        >
+          {name}
+        </button>,
+      );
     } else if (tok.startsWith('[')) {
       out.push(
         <a
           key={k++}
-          href={m[6]}
+          href={m[8]}
           target="_blank"
           rel="noreferrer"
           className="text-[var(--accent-text)] underline decoration-[var(--accent-line)] underline-offset-2"
         >
-          {m[5]}
+          {m[7]}
         </a>,
       );
     } else {

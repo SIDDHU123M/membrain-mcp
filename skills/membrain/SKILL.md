@@ -56,3 +56,5 @@ delete_memory(id)                      → { ok }
 list_memories(limit=20, tag?)          → recent memories
 memory_context(query?, top_k=8)        → session-start digest
 ```
+
+If a save returns `{ staged: true }`, the ledger is set to review agent writes — the memory appears after the user approves it in the web UI. Treat it as saved; do not retry.

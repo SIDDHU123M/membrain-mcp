@@ -219,6 +219,17 @@ export default function Settings() {
             <option value="off">Off — always import raw text</option>
           </select>
         </div>
+        <div>
+          <label className="label mb-1.5">Agent writes over MCP</label>
+          <select
+            className="input"
+            value={values.mcp_writes === 'staged' ? 'staged' : 'direct'}
+            onChange={(e) => set('mcp_writes', e.target.value)}
+          >
+            <option value="direct">Direct — agents save straight to the ledger (recommended)</option>
+            <option value="staged">Staged — agent saves wait in the review queue for your approval</option>
+          </select>
+        </div>
         <div className="flex items-center gap-3">
           <button
             className="btn"

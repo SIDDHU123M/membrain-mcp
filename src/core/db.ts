@@ -85,6 +85,7 @@ export const EDITABLE_SETTINGS = [
   'llm_api_key',
   'llm_model',
   'import_llm',
+  'mcp_writes',
   'embedding_provider',
   'embedding_api_url',
   'embedding_api_model',

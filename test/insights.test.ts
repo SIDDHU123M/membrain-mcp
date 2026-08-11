@@ -7,13 +7,14 @@ import {
   getProposals,
   proposeTitles,
   resolveProposals,
+  stageSave,
   storeHash,
   summarizeMemories,
 } from '../src/core/insights.js';
 import { getMemory } from '../src/core/memories.js';
 import type { Proposal } from '../src/core/insights.js';
 import { stripThink, OllamaError } from '../src/core/ollama.js';
-import { saveMemory } from '../src/core/memories.js';
+import { saveMemory, listMemories } from '../src/core/memories.js';
 import { setSetting } from '../src/core/db.js';
 import { tempDb, fakeEmbedder } from './helpers.js';
 import type { DB } from '../src/core/db.js';
@@ -102,18 +103,29 @@ describe('insights', () => {
     );
     expect(getProposals(db)).toHaveLength(3);
 
-    const acc = resolveProposals(db, ['p1'], true);
+    const acc = await resolveProposals(db, embedder, ['p1'], true);
     expect(acc).toEqual({ resolved: 1, applied: 1 });
     expect(getMemory(db, m.id).title).toBe('Good Title');
 
-    const rej = resolveProposals(db, ['p2'], false);
+    const rej = await resolveProposals(db, embedder, ['p2'], false);
     expect(rej).toEqual({ resolved: 1, applied: 0 });
     expect(getMemory(db, m.id).title).toBe('Good Title');
 
     // memory 999 doesn't exist — resolved but nothing applied
-    const ghost = resolveProposals(db, ['p3'], true);
+    const ghost = await resolveProposals(db, embedder, ['p3'], true);
     expect(ghost).toEqual({ resolved: 1, applied: 0 });
     expect(getProposals(db)).toHaveLength(0);
+  });
+
+  it('staged agent save lands only on accept, with its original stamp', async () => {
+    const p = stageSave(db, { content: 'agent fact', tags: ['x'], source: 'mcp:claude' });
+    expect(getProposals(db).some((q) => q.id === p.id && q.kind === 'save')).toBe(true);
+    expect(listMemories(db).some((m) => m.content === 'agent fact')).toBe(false); // nothing inked yet
+    const r = await resolveProposals(db, embedder, [p.id], true);
+    expect(r).toEqual({ resolved: 1, applied: 1 });
+    const saved = listMemories(db).find((m) => m.content === 'agent fact');
+    expect(saved?.source).toBe('mcp:claude');
+    expect(saved?.tags).toEqual(['x']);
   });
 
   it('cached mind map goes stale on change', async () => {
