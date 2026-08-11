@@ -878,8 +878,8 @@ export default function Memories({
         <div className="rule-double" aria-hidden="true" />
         <div className="py-2.5">
           <div className="flex flex-wrap items-baseline gap-x-3">
-            <span className="label">The clerk</span>
-            <p className="display text-[13.5px] italic text-[var(--text-2)]" role="status">
+            <span className="label shrink-0">The clerk</span>
+            <p className="display min-w-0 break-words text-[13.5px] italic text-[var(--text-2)]" role="status">
               {aiOp
                 ? aiStatus
                 : (aiStatus ??
@@ -1234,7 +1234,7 @@ export default function Memories({
 
       {notice && (
         <div className="card notice flex items-start gap-3 px-4 py-2.5 text-[13px]" role="status">
-          <span className="flex-1">{notice}</span>
+          <span className="min-w-0 flex-1 break-words">{notice}</span>
           <button className="cursor-pointer text-[var(--text-3)] hover:text-[var(--text)]" onClick={() => setNotice(null)} aria-label="Dismiss">
             ✕
           </button>
