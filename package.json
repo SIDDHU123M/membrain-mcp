@@ -32,7 +32,9 @@
     "prepublishOnly": "npm run test && npm run build",
     "prepack": "node scripts/swap-readme.mjs npm",
     "postpack": "node scripts/swap-readme.mjs restore",
-    "export:landing": "npm run build && node scripts/export-landing.mjs"
+    "export:landing": "npm run build && node scripts/export-landing.mjs",
+    "deploy:landing": "npm run export:landing && wrangler pages deploy --branch main",
+    "stage:landing": "npm run export:landing && wrangler pages deploy --branch staging"
   },
   "dependencies": {
     "@fastify/multipart": "^9.0.0",

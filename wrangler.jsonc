@@ -1,0 +1,7 @@
+{
+  // Cloudflare Pages config for the landing site (membrain.devlune.in).
+  // Deploy: npm run deploy:landing (production) / npm run stage:landing (preview)
+  "name": "membrain",
+  "pages_build_output_dir": "site-dist",
+  "compatibility_date": "2026-08-01"
+}
