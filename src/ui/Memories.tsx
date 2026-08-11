@@ -1023,10 +1023,10 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
       ) : (
         <div className="card rise overflow-hidden">
           {visible.map((m) => (
-            <div key={m.id} className="relative">
+            <div key={m.id} className="flex items-center border-b border-[var(--line)] last:border-b-0">
               <input
                 type="checkbox"
-                className="absolute right-3.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 cursor-pointer accent-[#1e3a8a]"
+                className="ml-3.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-[#1e3a8a]"
                 checked={selected.has(m.id)}
                 onChange={() =>
                   setSelected((s) => {
@@ -1038,7 +1038,7 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
                 }
                 aria-label={`Select entry ${m.id}`}
               />
-              <button className="entry pr-10" onClick={() => setDrawer(m)} aria-label={`Open entry: ${heading(m)}`}>
+              <button className="entry min-w-0 flex-1 !border-b-0" onClick={() => setDrawer(m)} aria-label={`Open entry: ${heading(m)}`}>
                 <span className="entry-id">#{String(m.id).padStart(3, '0')}</span>
                 <span className="min-w-0 flex-1">
                   <span className="display block truncate text-[14px] font-semibold leading-snug">{heading(m)}</span>
