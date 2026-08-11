@@ -18,12 +18,20 @@ function arg(name: string): string | undefined {
 }
 const has = (name: string) => process.argv.includes(name);
 
-async function main() {
-  if (has('--version') || has('-v')) {
+function pkgVersion(): string {
+  try {
     const pkg = JSON.parse(
       fs.readFileSync(path.resolve(fileURLToPath(import.meta.url), '../../../package.json'), 'utf8'),
     ) as { version: string };
-    console.log(`membrain ${pkg.version}`);
+    return pkg.version;
+  } catch {
+    return 'unknown';
+  }
+}
+
+async function main() {
+  if (has('--version') || has('-v')) {
+    console.log(`membrain ${pkgVersion()}`);
     return;
   }
   const stdio = has('--stdio');
@@ -49,6 +57,7 @@ async function main() {
   }
 
   const db = openDb(dbFile);
+  log(`membrain v${pkgVersion()}`);
   log(`membrain: db at ${dbFile}`);
   if (!stdio) {
     // safety net: snapshot every boot, keep the newest 5
