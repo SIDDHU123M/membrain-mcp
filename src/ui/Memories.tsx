@@ -26,16 +26,64 @@ function Drawer({
   memory,
   onClose,
   onChanged,
+  onOpen,
+  onProposed,
 }: {
   memory: Memory;
   onClose: () => void;
   onChanged: () => void;
+  onOpen: (m: Memory) => void;
+  onProposed: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(memory.content);
   const [tags, setTags] = useState(memory.tags.join(', '));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [related, setRelated] = useState<Memory[] | null>(null);
+  const [toolBusy, setToolBusy] = useState<string | null>(null);
+  const [toolNote, setToolNote] = useState<string | null>(null);
+
+  // drawer switches entries in place — reset per-entry state
+  useEffect(() => {
+    setEditing(false);
+    setContent(memory.content);
+    setTags(memory.tags.join(', '));
+    setRelated(null);
+    setToolNote(null);
+    setError(null);
+  }, [memory]);
+
+  const draftTitle = async () => {
+    setToolBusy('title');
+    setToolNote(null);
+    try {
+      const r = await api.proposeTitleFor(memory.id);
+      setToolNote(
+        r.proposed > 0
+          ? 'Title drafted — review it in the clerk’s proposal queue.'
+          : 'Nothing proposed (a proposal for this entry may already be pending).',
+      );
+      onProposed();
+    } catch (e) {
+      setToolNote((e as Error).message);
+    } finally {
+      setToolBusy(null);
+    }
+  };
+
+  const findRelated = async () => {
+    setToolBusy('related');
+    setToolNote(null);
+    try {
+      const r = await api.memories({ query: memory.content.slice(0, 160) });
+      setRelated(r.filter((m) => m.id !== memory.id).slice(0, 5));
+    } catch (e) {
+      setToolNote((e as Error).message);
+    } finally {
+      setToolBusy(null);
+    }
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -147,6 +195,55 @@ function Drawer({
               </div>
             )}
           </dl>
+
+          {/* the clerk's tools for this one entry */}
+          <div className="mt-6 border-t border-[var(--line)] pt-4">
+            <span className="label">Clerk's tools</span>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button
+                className="btn"
+                onClick={() => void draftTitle()}
+                disabled={toolBusy !== null}
+                title="Draft a title for this entry — staged for your review, never applied directly"
+              >
+                {toolBusy === 'title' ? 'Drafting…' : memory.title ? 'Redraft title' : 'Draft title'}
+              </button>
+              <button className="btn" onClick={() => void findRelated()} disabled={toolBusy !== null}>
+                {toolBusy === 'related' ? 'Searching…' : 'Find related'}
+              </button>
+            </div>
+            {toolNote && <p className="notice mt-2 text-[12px]">{toolNote}</p>}
+            {related && (
+              <div className="mt-3 space-y-1.5">
+                {related.length === 0 && (
+                  <p className="text-[12px] text-[var(--text-3)]">No related entries found.</p>
+                )}
+                {related.map((r) => (
+                  <button
+                    key={r.id}
+                    className="block w-full cursor-pointer border border-[var(--line)] bg-[var(--inset)] p-2.5 text-left transition-colors hover:border-[var(--line-strong)]"
+                    onClick={() => onOpen(r)}
+                    aria-label={`Open related entry ${r.id}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="mono text-[10px] text-[var(--text-3)]">
+                        #{String(r.id).padStart(3, '0')}
+                      </span>
+                      {r.score !== undefined && (
+                        <span className="mono text-[10px] text-[var(--text-3)]">
+                          {r.score.toFixed(3)}
+                        </span>
+                      )}
+                      <Stamp source={r.source} />
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-[12px] leading-5 text-[var(--text-2)]">
+                      {r.title ?? r.content}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {error && <p className="mt-3 text-[12.5px] text-[var(--danger)]">{error}</p>}
         </div>
@@ -963,7 +1060,15 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
         </div>
       )}
 
-      {drawer && <Drawer memory={drawer} onClose={() => setDrawer(null)} onChanged={() => void load()} />}
+      {drawer && (
+        <Drawer
+          memory={drawer}
+          onClose={() => setDrawer(null)}
+          onChanged={() => void load()}
+          onOpen={(m) => setDrawer(m)}
+          onProposed={() => void loadProposals()}
+        />
+      )}
     </div>
   );
 }

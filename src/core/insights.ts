@@ -213,6 +213,7 @@ const TITLE_BATCH = 1; // one memory per call, user's explicit choice — lighte
 export async function proposeTitles(
   db: DB,
   onProgress?: (p: TitlesProgress) => void,
+  memoryIds?: number[],
 ): Promise<number> {
   const cfg = await ollamaConfig(db);
   if (!cfg) throw new OllamaError('Ollama is not reachable — start it or check Settings');
@@ -221,11 +222,19 @@ export async function proposeTitles(
       .filter((p) => p.kind === 'title')
       .map((p) => p.memoryId),
   );
+  // explicit ids may re-title entries that already have one (old value kept on the proposal)
   const rows = (
-    db
-      .prepare('SELECT id, content FROM memories WHERE title IS NULL ORDER BY id DESC LIMIT 120')
-      .all() as { id: number; content: string }[]
+    memoryIds && memoryIds.length > 0
+      ? (db
+          .prepare(
+            `SELECT id, content, title FROM memories WHERE id IN (${memoryIds.map(() => '?').join(',')})`,
+          )
+          .all(...memoryIds) as { id: number; content: string; title: string | null }[])
+      : (db
+          .prepare('SELECT id, content, NULL AS title FROM memories WHERE title IS NULL ORDER BY id DESC LIMIT 120')
+          .all() as { id: number; content: string; title: string | null }[])
   ).filter((r) => !pending.has(r.id));
+  const oldTitles = new Map(rows.map((r) => [r.id, r.title]));
 
   let proposed = 0;
   for (let i = 0; i < rows.length; i += TITLE_BATCH) {
@@ -247,7 +256,7 @@ export async function proposeTitles(
           id: crypto.randomUUID(),
           memoryId: id,
           kind: 'title',
-          old: null,
+          old: oldTitles.get(id) ?? null,
           next: t.title.trim().slice(0, 80),
           model: cfg.model,
           createdAt: new Date().toISOString(),

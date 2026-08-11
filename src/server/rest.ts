@@ -250,7 +250,13 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
 
   app.post('/api/insights/mindmap', async () => buildMindMap(db));
 
-  app.post('/api/insights/titles', async () => ({ proposed: await proposeTitles(db) }));
+  app.post<{ Body: { ids?: number[] } }>('/api/insights/titles', async (req) => {
+    const ids = req.body?.ids;
+    if (ids !== undefined && (!Array.isArray(ids) || ids.some((i) => typeof i !== 'number'))) {
+      throw new ValidationError('ids must be an array of numbers');
+    }
+    return { proposed: await proposeTitles(db, undefined, ids) };
+  });
 
   app.get('/api/proposals', async () => getProposals(db));
 

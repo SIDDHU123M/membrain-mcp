@@ -143,6 +143,11 @@ export const api = {
     req<{ ok: true }>(`/api/skills/${root}/${name}`, { method: 'DELETE' }),
   generateTitles: () =>
     req<{ proposed: number }>('/api/insights/titles', { method: 'POST', body: '{}' }),
+  proposeTitleFor: (id: number) =>
+    req<{ proposed: number }>('/api/insights/titles', {
+      method: 'POST',
+      body: JSON.stringify({ ids: [id] }),
+    }),
   proposals: () => req<Proposal[]>('/api/proposals'),
   resolveProposals: (ids: string[], accept: boolean) =>
     req<{ resolved: number; applied: number }>('/api/proposals/resolve', {
