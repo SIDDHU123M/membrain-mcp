@@ -27,7 +27,7 @@ const RRF_K = 60;
 export async function searchMemories(
   db: DB,
   embedder: Embedder,
-  opts: { query: string; topK?: number; tags?: string[] },
+  opts: { query: string; topK?: number; tags?: string[]; includeSealed?: boolean },
 ): Promise<SearchResult[]> {
   const topK = Math.max(1, Math.min(opts.topK ?? 5, 50));
   const query = opts.query.trim();
@@ -96,12 +96,15 @@ export async function searchMemories(
     updated_at: string;
     pinned: number;
     archived: number;
+    sealed: number;
   };
   const getRow = db.prepare('SELECT * FROM memories WHERE id = ?');
   const candidates: { row: Row; score: number }[] = [];
   for (const [memoryId, score] of byMemory.entries()) {
     const row = getRow.get(memoryId) as Row | undefined;
-    if (row && !row.archived) candidates.push({ row, score }); // struck pages stay out of recall
+    if (!row || row.archived) continue; // struck pages stay out of recall
+    if (row.sealed && !opts.includeSealed) continue; // sealed pages never reach agents
+    candidates.push({ row, score });
   }
   const RECENCY_WEIGHT = 0.5;
   [...candidates]
@@ -119,6 +122,7 @@ export async function searchMemories(
       tags,
       pinned: !!row.pinned,
       archived: !!row.archived,
+      sealed: !!row.sealed,
       score,
       via: [...(viaByMemory.get(row.id) ?? [])],
     });

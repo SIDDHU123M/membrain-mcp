@@ -64,7 +64,7 @@ export async function buildMemoryMap(
   const cached = opts.onlyNew ? getCachedMap(db) : null;
   const known = new Set(cached?.categories.flatMap((c) => c.ids) ?? []);
   let rows = db
-    .prepare('SELECT id, content FROM memories WHERE archived = 0 ORDER BY id DESC LIMIT ?')
+    .prepare('SELECT id, content FROM memories WHERE archived = 0 AND sealed = 0 ORDER BY id DESC LIMIT ?')
     .all(MAP_CAP) as { id: number; content: string }[];
   if (cached) rows = rows.filter((r) => !known.has(r.id));
   if (rows.length === 0) {
@@ -275,11 +275,11 @@ export async function proposeTitles(
     memoryIds && memoryIds.length > 0
       ? (db
           .prepare(
-            `SELECT id, content, title FROM memories WHERE id IN (${memoryIds.map(() => '?').join(',')})`,
+            `SELECT id, content, title FROM memories WHERE sealed = 0 AND id IN (${memoryIds.map(() => '?').join(',')})`,
           )
           .all(...memoryIds) as { id: number; content: string; title: string | null }[])
       : (db
-          .prepare('SELECT id, content, NULL AS title FROM memories WHERE title IS NULL ORDER BY id DESC LIMIT 120')
+          .prepare('SELECT id, content, NULL AS title FROM memories WHERE title IS NULL AND sealed = 0 ORDER BY id DESC LIMIT 120')
           .all() as { id: number; content: string; title: string | null }[])
   ).filter((r) => !pending.has(r.id));
   const oldTitles = new Map(rows.map((r) => [r.id, r.title]));
@@ -360,7 +360,7 @@ export async function buildMindMap(db: DB): Promise<MindMap> {
   const cfg = await ollamaConfig(db);
   if (!cfg) throw new OllamaError('No AI available — start Ollama or configure a cloud provider in Settings');
   const rows = db
-    .prepare('SELECT id, content FROM memories ORDER BY id DESC LIMIT ?')
+    .prepare('SELECT id, content FROM memories WHERE sealed = 0 ORDER BY id DESC LIMIT ?')
     .all(MAP_CAP) as { id: number; content: string }[];
   if (rows.length === 0) throw new OllamaError('nothing to map — the store is empty');
 
@@ -459,10 +459,10 @@ export async function summarizeMemories(
     ids && ids.length > 0
       ? db
           .prepare(
-            `SELECT id, content FROM memories WHERE id IN (${ids.map(() => '?').join(',')}) ORDER BY id`,
+            `SELECT id, content FROM memories WHERE sealed = 0 AND id IN (${ids.map(() => '?').join(',')}) ORDER BY id`,
           )
           .all(...ids)
-      : db.prepare('SELECT id, content FROM memories ORDER BY id DESC LIMIT ?').all(MAP_CAP)
+      : db.prepare('SELECT id, content FROM memories WHERE sealed = 0 ORDER BY id DESC LIMIT ?').all(MAP_CAP)
   ) as { id: number; content: string }[];
   if (rows.length === 0) throw new OllamaError('nothing to summarize');
 

@@ -81,17 +81,20 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     '/api/memories',
     async (req) => {
       const { query, tag, limit, archived } = req.query;
+      // the web UI is the one place sealed pages are visible
       if (query && query.trim()) {
         return searchMemories(db, embedder, {
           query,
           topK: limit ? Number(limit) : 20,
           tags: tag ? [tag] : undefined,
+          includeSealed: true,
         });
       }
       return listMemories(db, {
         limit: limit ? Number(limit) : undefined,
         tag,
         archived: archived === '1',
+        includeSealed: true,
       });
     },
   );
@@ -317,6 +320,12 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
         ? req.body.label.trim().slice(0, 60)
         : 'all entries';
     return { summary: await summarizeMemories(db, ids && ids.length > 0 ? ids : undefined, label) };
+  });
+
+  // which brain is on duty — shown while the clerk works (no generation, cheap)
+  app.get('/api/llm/info', async () => {
+    const cfg = await llmConfig(db);
+    return { llm: cfg ? { provider: cfg.kind, model: cfg.model } : null };
   });
 
   // quick "does the configured brain answer" probe for the Settings tab

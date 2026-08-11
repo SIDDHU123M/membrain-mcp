@@ -23,6 +23,25 @@ beforeEach(() => ({ db, file, cleanup } = tempDb()));
 afterEach(() => cleanup());
 
 describe('memories CRUD', () => {
+  it('sealed entries are invisible without opt-in: list, search', async () => {
+    const a = await saveMemory(db, embedder, { content: 'secret credential note', source: 'ui' });
+    await saveMemory(db, embedder, { content: 'public note', source: 'ui' });
+    await updateMemory(db, embedder, a.id, { sealed: true });
+
+    // MCP paths use the defaults — sealed never appears
+    expect(listMemories(db).map((m) => m.id)).not.toContain(a.id);
+    const agentSearch = await searchMemories(db, embedder, { query: 'secret credential' });
+    expect(agentSearch.map((r) => r.id)).not.toContain(a.id);
+
+    // the web UI opts in and still sees it
+    expect(listMemories(db, { includeSealed: true }).map((m) => m.id)).toContain(a.id);
+    const uiSearch = await searchMemories(db, embedder, {
+      query: 'secret credential',
+      includeSealed: true,
+    });
+    expect(uiSearch.map((r) => r.id)).toContain(a.id);
+  });
+
   it('pin floats to top, archive hides from list and recall, stale skips pinned', async () => {
     const a = await saveMemory(db, embedder, { content: 'first note', source: 'ui' });
     const b = await saveMemory(db, embedder, { content: 'second note', source: 'ui' });

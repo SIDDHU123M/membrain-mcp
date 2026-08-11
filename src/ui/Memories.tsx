@@ -131,6 +131,7 @@ function Drawer({
           <Stamp source={memory.source} />
           {memory.pinned && <span className="text-[12px]" title="Pinned">★</span>}
           {memory.archived && <span className="chip">archived</span>}
+          {memory.sealed && <span className="chip" title="Never sent to any AI, invisible to agents">sealed</span>}
           <button
             className="ml-auto cursor-pointer text-[18px] leading-none text-[var(--text-3)] hover:text-[var(--text)]"
             onClick={onClose}
@@ -207,8 +208,12 @@ function Drawer({
               <button
                 className="btn"
                 onClick={() => void draftTitle()}
-                disabled={toolBusy !== null}
-                title="Draft a title for this entry — staged for your review, never applied directly"
+                disabled={toolBusy !== null || memory.sealed}
+                title={
+                  memory.sealed
+                    ? 'Sealed — this entry is never sent to any AI'
+                    : 'Draft a title for this entry — staged for your review, never applied directly'
+                }
               >
                 {toolBusy === 'title' ? 'Drafting…' : memory.title ? 'Redraft title' : 'Draft title'}
               </button>
@@ -236,6 +241,18 @@ function Drawer({
                 }}
               >
                 {memory.archived ? 'Restore' : 'Archive'}
+              </button>
+              <button
+                className="btn"
+                disabled={busy}
+                title="Sealed entries are never sent to any AI (clerk or cloud) and are invisible to agents over MCP"
+                onClick={async () => {
+                  await api.updateMemory(memory.id, { sealed: !memory.sealed });
+                  onChanged();
+                  onClose();
+                }}
+              >
+                {memory.sealed ? 'Unseal' : 'Seal from AI'}
               </button>
               <button
                 className="btn"
@@ -521,6 +538,17 @@ export default function Memories({
   }, [memories]);
   const byId = useMemo(() => new Map(memories.map((m) => [m.id, m])), [memories]);
   const untitled = useMemo(() => memories.filter((m) => !m.title).length, [memories]);
+  const sealedCount = useMemo(() => memories.filter((m) => m.sealed).length, [memories]);
+
+  // which brain is on duty — shown whenever the clerk is working
+  const [llmInfo, setLlmInfo] = useState<{ provider: string; model: string } | null>(null);
+  useEffect(() => {
+    if (!aiOp || llmInfo) return;
+    void api
+      .llmInfo()
+      .then((r) => setLlmInfo(r.llm))
+      .catch(() => {});
+  }, [aiOp, llmInfo]);
 
   const visible = useMemo(() => {
     let v = memories;
@@ -795,7 +823,7 @@ export default function Memories({
   };
 
   const ctxAction = async (
-    action: 'open' | 'select' | 'title' | 'export' | 'pin' | 'archive' | 'delete',
+    action: 'open' | 'select' | 'title' | 'export' | 'pin' | 'archive' | 'seal' | 'delete',
   ) => {
     if (!ctxMenu) return;
     const m = ctxMenu.m;
@@ -805,6 +833,15 @@ export default function Memories({
     if (action === 'export') window.open(`/api/export/memories?ids=${m.id}`, '_blank');
     if (action === 'pin') {
       await api.updateMemory(m.id, { pinned: !m.pinned });
+      await load();
+    }
+    if (action === 'seal') {
+      await api.updateMemory(m.id, { sealed: !m.sealed });
+      setNotice(
+        m.sealed
+          ? `Entry #${m.id} unsealed — the clerk and agents can see it again.`
+          : `Entry #${m.id} sealed — it will never be sent to any AI or shown to agents.`,
+      );
       await load();
     }
     if (action === 'archive') {
@@ -912,6 +949,11 @@ export default function Memories({
                     ? `${map.categories.length} topics on file${map.stale ? ' — entries changed since, reorganize' : ''} · ${untitled} untitled`
                     : `${memories.length} entries · ${untitled} untitled · not yet organized`))}
             </p>
+            {aiOp && llmInfo && (
+              <span className="chip shrink-0" title="The brain doing this work, from Settings">
+                {llmInfo.provider} · {llmInfo.model}
+              </span>
+            )}
           </div>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             <button className="btn-primary" onClick={() => runMap(false)} disabled={aiOp !== null}>
@@ -978,6 +1020,11 @@ export default function Memories({
             )}
           </div>
           {progress && <ProgressBar {...progress} />}
+          <p className="mt-2 text-[11.5px] text-[var(--text-3)]">
+            {sealedCount > 0
+              ? `${sealedCount} sealed ${sealedCount === 1 ? 'entry stays' : 'entries stay'} out of every AI operation and agent request.`
+              : 'Private entry? Right-click it → “Seal” and it will never be sent to any AI or shown to agents.'}
+          </p>
         </div>
         <div className="border-b border-[var(--line-strong)]" aria-hidden="true" />
       </section>
@@ -1508,6 +1555,11 @@ export default function Memories({
                     ★
                   </span>
                 )}
+                {m.sealed && (
+                  <span className="chip shrink-0" title="Sealed — never sent to any AI, invisible to agents">
+                    sealed
+                  </span>
+                )}
                 <Stamp source={m.source} />
                 <span
                   className="shrink-0 whitespace-nowrap text-right text-[11px] text-[var(--text-3)]"
@@ -1665,6 +1717,7 @@ export default function Memories({
               ['open', 'Open entry'],
               ['select', selected.has(ctxMenu.m.id) ? 'Deselect' : 'Select'],
               ['pin', ctxMenu.m.pinned ? 'Unpin' : 'Pin to top'],
+              ['seal', ctxMenu.m.sealed ? 'Unseal (allow AI)' : 'Seal (hide from AI)'],
               ['archive', ctxMenu.m.archived ? 'Restore from archive' : 'File to archive'],
               ['title', ctxMenu.m.title ? 'Redraft title' : 'Draft title'],
               ['export', 'Export JSON'],

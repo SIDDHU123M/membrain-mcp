@@ -25,6 +25,14 @@ function text(data: unknown) {
 export function buildMcpServer(ctx: Ctx): McpServer {
   const { db, embedder } = ctx;
   const server = new McpServer({ name: 'membrain', version: '0.1.0' });
+
+  // sealed pages never leave the ledger: not readable, updatable, or deletable
+  // over MCP. (list/search/context exclude them at the query level.)
+  const assertUnsealed = (id: number) => {
+    if (getMemory(db, id).sealed) {
+      throw new Error(`memory ${id} is sealed by the user — not accessible to agents`);
+    }
+  };
   const source = () => `mcp:${server.server.getClientVersion()?.name ?? 'unknown'}`;
 
   server.registerTool(
@@ -89,6 +97,7 @@ export function buildMcpServer(ctx: Ctx): McpServer {
       },
     },
     async ({ id, content, tags }) => {
+      assertUnsealed(id);
       await updateMemory(db, embedder, id, { content, tags });
       return text({ ok: true });
     },
@@ -101,6 +110,7 @@ export function buildMcpServer(ctx: Ctx): McpServer {
       inputSchema: { id: z.number().int().describe('Memory id') },
     },
     async ({ id }) => {
+      assertUnsealed(id);
       deleteMemory(db, id);
       return text({ ok: true });
     },
@@ -124,7 +134,10 @@ export function buildMcpServer(ctx: Ctx): McpServer {
       description: 'Fetch one memory in full by id (search results may be truncated).',
       inputSchema: { id: z.number().int().describe('Memory id') },
     },
-    async ({ id }) => text(getMemory(db, id)),
+    async ({ id }) => {
+      assertUnsealed(id);
+      return text(getMemory(db, id));
+    },
   );
 
   server.registerTool(

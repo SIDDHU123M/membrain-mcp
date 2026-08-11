@@ -8,6 +8,7 @@ export interface Memory {
   updated_at: string;
   pinned: boolean;
   archived: boolean;
+  sealed: boolean;
   score?: number;
   via?: ('vec' | 'fts')[];
 }
@@ -123,7 +124,7 @@ export const api = {
   stale: (days = 90) => req<Memory[]>(`/api/memories/stale?days=${days}`),
   addMemory: (content: string, tags: string[]) =>
     req<Memory>('/api/memories', { method: 'POST', body: JSON.stringify({ content, tags }) }),
-  updateMemory: (id: number, patch: { content?: string; tags?: string[]; pinned?: boolean; archived?: boolean }) =>
+  updateMemory: (id: number, patch: { content?: string; tags?: string[]; pinned?: boolean; archived?: boolean; sealed?: boolean }) =>
     req<Memory>(`/api/memories/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteMemory: (id: number) => req<{ ok: true }>(`/api/memories/${id}`, { method: 'DELETE' }),
   importFile: (file: File) => {
@@ -193,6 +194,7 @@ export const api = {
       body: JSON.stringify({ ids: ids ?? [], label }),
     }),
   summaries: () => req<{ summaries: SavedSummary[] }>('/api/insights/summaries'),
+  llmInfo: () => req<{ llm: { provider: string; model: string } | null }>('/api/llm/info'),
   testLlm: () =>
     req<{ ok: boolean; provider: string; model: string }>('/api/llm/test', {
       method: 'POST',

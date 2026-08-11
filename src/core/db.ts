@@ -43,6 +43,9 @@ const MIGRATIONS: string[] = [
   // default lists and search but is never deleted
   `ALTER TABLE memories ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
    ALTER TABLE memories ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;`,
+  // 004 — sealed pages: never leave the ledger. Excluded from every clerk LLM
+  // operation and invisible to agents over MCP; only the web UI shows them.
+  `ALTER TABLE memories ADD COLUMN sealed INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export function openDb(file: string): DB {

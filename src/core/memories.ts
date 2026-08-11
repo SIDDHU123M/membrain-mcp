@@ -18,6 +18,7 @@ export interface Memory {
   updated_at: string;
   pinned: boolean;
   archived: boolean;
+  sealed: boolean;
 }
 
 interface MemoryRow {
@@ -30,6 +31,7 @@ interface MemoryRow {
   updated_at: string;
   pinned: number;
   archived: number;
+  sealed: number;
 }
 
 function toMemory(row: MemoryRow): Memory {
@@ -38,6 +40,7 @@ function toMemory(row: MemoryRow): Memory {
     tags: JSON.parse(row.tags) as string[],
     pinned: !!row.pinned,
     archived: !!row.archived,
+    sealed: !!row.sealed,
   };
 }
 
@@ -112,16 +115,17 @@ export async function updateMemory(
   db: DB,
   embedder: Embedder,
   id: number,
-  patch: { content?: string; tags?: string[]; pinned?: boolean; archived?: boolean },
+  patch: { content?: string; tags?: string[]; pinned?: boolean; archived?: boolean; sealed?: boolean },
 ): Promise<Memory> {
   const existing = getMemory(db, id);
   const content = patch.content !== undefined ? validateContent(patch.content) : existing.content;
   const tags = patch.tags !== undefined ? validateTags(patch.tags) : existing.tags;
   const pinned = patch.pinned !== undefined ? patch.pinned : existing.pinned;
   const archived = patch.archived !== undefined ? patch.archived : existing.archived;
+  const sealed = patch.sealed !== undefined ? patch.sealed : existing.sealed;
   db.prepare(
-    'UPDATE memories SET content = ?, tags = ?, pinned = ?, archived = ?, updated_at = ? WHERE id = ?',
-  ).run(content, JSON.stringify(tags), pinned ? 1 : 0, archived ? 1 : 0, new Date().toISOString(), id);
+    'UPDATE memories SET content = ?, tags = ?, pinned = ?, archived = ?, sealed = ?, updated_at = ? WHERE id = ?',
+  ).run(content, JSON.stringify(tags), pinned ? 1 : 0, archived ? 1 : 0, sealed ? 1 : 0, new Date().toISOString(), id);
   if (patch.content !== undefined && content !== existing.content) {
     // the LLM title described the old content — clear it so it can be re-proposed
     db.prepare('UPDATE memories SET title = NULL WHERE id = ?').run(id);
@@ -144,11 +148,13 @@ export function deleteMemory(db: DB, id: number): void {
 
 export function listMemories(
   db: DB,
-  opts: { limit?: number; tag?: string; archived?: boolean } = {},
+  opts: { limit?: number; tag?: string; archived?: boolean; includeSealed?: boolean } = {},
 ): Memory[] {
   const limit = Math.max(1, Math.min(opts.limit ?? 20, 500));
   // default view: live pages only, pinned float; archived view: the drawer of struck pages
   const where = [opts.archived ? 'archived = 1' : 'archived = 0'];
+  // sealed pages are user-only: callers must opt in (the web UI does; MCP never does)
+  if (!opts.includeSealed) where.push('sealed = 0');
   const params: (string | number)[] = [];
   if (opts.tag) {
     where.push('EXISTS (SELECT 1 FROM json_each(memories.tags) WHERE json_each.value = ?)');
