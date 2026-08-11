@@ -19,6 +19,13 @@ function arg(name: string): string | undefined {
 const has = (name: string) => process.argv.includes(name);
 
 async function main() {
+  if (has('--version') || has('-v')) {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.resolve(fileURLToPath(import.meta.url), '../../../package.json'), 'utf8'),
+    ) as { version: string };
+    console.log(`membrain ${pkg.version}`);
+    return;
+  }
   const stdio = has('--stdio');
   const host = arg('--host') ?? '127.0.0.1';
   const port = Number(arg('--port') ?? 7777);
