@@ -79,7 +79,10 @@
       /* nav */
       nav { display: flex; align-items: center; gap: 20px; padding: 26px 0; }
       nav .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-      nav .brand img { height: 40px; width: 40px; object-fit: cover; border-radius: 5px; box-shadow: 0 1px 4px rgba(28,25,20,0.25); }
+      nav .brand img {
+        height: 42px; width: 42px; object-fit: cover;
+        filter: invert(1) contrast(1.05); mix-blend-mode: multiply;
+      }
       nav .brand b { font-family: var(--serif); font-size: 20px; font-weight: 600; }
       nav .links { margin-left: auto; display: flex; gap: 26px; align-items: center; }
       nav .links a { text-decoration: none; font-size: 13.5px; color: var(--cream-2); }
@@ -94,7 +97,12 @@
       .hero .sub { margin-top: 22px; font-size: 17.5px; color: var(--cream-2); max-width: 34em; }
       .hero .cta { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
       .hero .art { justify-self: center; }
-      .hero .art img { width: min(380px, 80vw); height: auto; display: block; }
+      /* the logo PNG is cream-on-black; invert + multiply reprints it as ink on the paper itself */
+      .hero .art img {
+        width: min(400px, 82vw); height: auto; display: block;
+        filter: invert(1) contrast(1.05);
+        mix-blend-mode: multiply;
+      }
       .hero .npx {
         font-family: var(--mono); font-size: 14px; color: #efe8d8;
         background: var(--plate); border: 1px solid var(--plate);
@@ -211,7 +219,7 @@
               <a class="btn" href="#how">Connect your agents</a>
             </div>
           </div>
-          <div class="art rise d2 plate">
+          <div class="art rise d2">
             <img src="./assets/membrain-logo.png" alt="Membrain — half brain, half database" />
           </div>
         </div>

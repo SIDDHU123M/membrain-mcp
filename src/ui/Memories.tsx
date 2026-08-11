@@ -339,8 +339,25 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
   const [review, setReview] = useState<{ header: string; facts: ReviewFact[] } | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [showProposals, setShowProposals] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; m: Memory } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const esRef = useRef<EventSource | null>(null);
+
+  // context menu dismissal
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    window.addEventListener('click', close);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('click', close);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [ctxMenu]);
 
   useEffect(() => () => esRef.current?.close(), []);
 
@@ -586,6 +603,73 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
   const exportScope = () => {
     const qs = scope.ids?.length ? `?ids=${scope.ids.join(',')}` : '';
     window.open(`/api/export/memories${qs}`, '_blank');
+  };
+
+  const toggleSelect = (id: number) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const deleteSelected = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 3500);
+      return;
+    }
+    setConfirmDelete(false);
+    setBusy(true);
+    try {
+      for (const id of selected) await api.deleteMemory(id);
+      setNotice(`Struck ${selected.size} entries from the ledger.`);
+      setSelected(new Set());
+      await load();
+    } catch (e) {
+      setNotice((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openCtx = (e: React.MouseEvent, m: Memory) => {
+    e.preventDefault();
+    const pad = 8;
+    setCtxMenu({
+      x: Math.min(e.clientX, window.innerWidth - 190 - pad),
+      y: Math.min(e.clientY, window.innerHeight - 230 - pad),
+      m,
+    });
+  };
+
+  const ctxAction = async (action: 'open' | 'select' | 'title' | 'export' | 'delete') => {
+    if (!ctxMenu) return;
+    const m = ctxMenu.m;
+    setCtxMenu(null);
+    if (action === 'open') setDrawer(m);
+    if (action === 'select') toggleSelect(m.id);
+    if (action === 'export') window.open(`/api/export/memories?ids=${m.id}`, '_blank');
+    if (action === 'title') {
+      try {
+        await api.proposeTitleFor(m.id);
+        setNotice(`Title drafted for #${m.id} — review in the clerk's proposals.`);
+        await loadProposals();
+        setShowProposals(true);
+      } catch (e) {
+        setNotice((e as Error).message);
+      }
+    }
+    if (action === 'delete') {
+      setBusy(true);
+      try {
+        await api.deleteMemory(m.id);
+        setNotice(`Struck entry #${m.id}.`);
+        await load();
+      } finally {
+        setBusy(false);
+      }
+    }
   };
 
   return (
@@ -834,9 +918,19 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
             </button>
           )}
           {selected.size > 0 && (
-            <button className="btn" onClick={() => setSelected(new Set())}>
-              Clear {selected.size} selected
-            </button>
+            <>
+              <button
+                className="btn-danger"
+                onClick={() => void deleteSelected()}
+                disabled={busy}
+                style={confirmDelete ? { borderColor: 'var(--danger)', color: 'var(--danger)' } : undefined}
+              >
+                {confirmDelete ? `Confirm — strike ${selected.size}?` : `Delete ${selected.size} selected`}
+              </button>
+              <button className="btn" onClick={() => setSelected(new Set())}>
+                Clear
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -988,7 +1082,7 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
       ) : view === 'cards' ? (
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((m, i) => (
-            <article key={m.id} className="card card-hover rise relative" style={{ animationDelay: `${Math.min(i, 12) * 24}ms` }}>
+            <article key={m.id} className="card card-hover rise relative" style={{ animationDelay: `${Math.min(i, 12) * 24}ms` }} onContextMenu={(e) => openCtx(e, m)}>
               <input
                 type="checkbox"
                 className="absolute right-2.5 top-2.5 z-10 h-3.5 w-3.5 cursor-pointer accent-[#1e3a8a]"
@@ -1023,7 +1117,7 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
       ) : (
         <div className="card rise overflow-hidden">
           {visible.map((m) => (
-            <div key={m.id} className="flex items-center border-b border-[var(--line)] last:border-b-0">
+            <div key={m.id} className="flex items-center border-b border-[var(--line)] last:border-b-0" onContextMenu={(e) => openCtx(e, m)}>
               <input
                 type="checkbox"
                 className="ml-3.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-[#1e3a8a]"
@@ -1068,6 +1162,44 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
           onOpen={(m) => setDrawer(m)}
           onProposed={() => void loadProposals()}
         />
+      )}
+
+      {ctxMenu && (
+        <div
+          className="card fixed z-50 w-[185px] py-1"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          role="menu"
+          aria-label={`Entry ${ctxMenu.m.id} actions`}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <div className="mono border-b border-[var(--line)] px-3 pb-1 pt-0.5 text-[10px] text-[var(--text-3)]">
+            ENTRY #{String(ctxMenu.m.id).padStart(3, '0')}
+          </div>
+          {(
+            [
+              ['open', 'Open entry'],
+              ['select', selected.has(ctxMenu.m.id) ? 'Deselect' : 'Select'],
+              ['title', ctxMenu.m.title ? 'Redraft title' : 'Draft title'],
+              ['export', 'Export JSON'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              role="menuitem"
+              className="block w-full cursor-pointer px-3 py-1.5 text-left text-[12.5px] text-[var(--text-2)] transition-colors hover:bg-[var(--inset)] hover:text-[var(--text)]"
+              onClick={() => void ctxAction(key)}
+            >
+              {label}
+            </button>
+          ))}
+          <button
+            role="menuitem"
+            className="block w-full cursor-pointer border-t border-[var(--line)] px-3 py-1.5 text-left text-[12.5px] text-[var(--danger)] transition-colors hover:bg-[var(--inset)]"
+            onClick={() => void ctxAction('delete')}
+          >
+            Strike entry
+          </button>
+        </div>
       )}
     </div>
   );
