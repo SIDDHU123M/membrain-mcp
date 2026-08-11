@@ -50,6 +50,13 @@ export function tourPending(): boolean {
   return !localStorage.getItem(DONE_KEY);
 }
 
+interface Spot {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
 export default function Tour({
   onTab,
   onClose,
@@ -58,10 +65,28 @@ export default function Tour({
   onClose: () => void;
 }) {
   const [i, setI] = useState(0);
+  const [spot, setSpot] = useState<Spot | null>(null);
   const step = STEPS[i];
 
   useEffect(() => {
     if (step.tab) onTab(step.tab);
+    const target = () =>
+      step.tab ? document.querySelector<HTMLElement>(`[data-tour="${step.tab}"]`) : null;
+    const measure = () => {
+      const el = target();
+      if (!el) return setSpot(null);
+      const r = el.getBoundingClientRect();
+      setSpot({ top: r.top - 5, left: r.left - 5, width: r.width + 10, height: r.height + 10 });
+    };
+    target()?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, true);
+    };
   }, [step, onTab]);
 
   const finish = () => {
@@ -82,8 +107,21 @@ export default function Tour({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center px-3 pt-20 pb-3 sm:px-4 sm:pt-24 sm:pb-4" role="dialog" aria-modal="true" aria-label="Tour">
-      {/* light veil — the real app stays visible behind it */}
-      <div className="absolute inset-0 bg-[var(--bg)]/55" onClick={finish} aria-hidden="true" />
+      {/* click-catcher; the actual veil is the spotlight's box-shadow */}
+      <div className="absolute inset-0" onClick={finish} aria-hidden="true" />
+      <div
+        className="tour-spot"
+        style={
+          spot ?? {
+            top: window.innerHeight / 2,
+            left: window.innerWidth / 2,
+            width: 0,
+            height: 0,
+            outlineColor: 'transparent',
+          }
+        }
+        aria-hidden="true"
+      />
 
       <div className="card relative z-10 w-full max-w-[30rem] max-h-[min(82vh,36rem)] overflow-y-auto p-4 sm:p-5 sm:mb-2">
         <div className="rule-double" aria-hidden="true" />

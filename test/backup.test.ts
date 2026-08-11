@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   exportMemories,
+  exportMarkdownFolder,
   importMemoriesJson,
   backupDbFile,
   snapshotOnBoot,
@@ -36,6 +37,21 @@ describe('backup & export', () => {
     expect(restored).toHaveLength(2);
     expect(restored.map((m) => m.source).sort()).toEqual(['mcp:claude', 'ui']);
     c2();
+  });
+
+  it('markdown folder export writes one frontmattered file per memory', async () => {
+    const a = await saveMemory(db, embedder, { content: 'alpha note', tags: ['x'], source: 'ui' });
+    await saveMemory(db, embedder, { content: 'beta note', source: 'mcp:claude' });
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'membrain-md-'));
+    const r = exportMarkdownFolder(db, dir);
+    expect(r.files).toBe(2);
+    const names = fs.readdirSync(dir).sort();
+    expect(names).toHaveLength(2);
+    const first = fs.readFileSync(path.join(dir, names[0]), 'utf8');
+    expect(first).toContain(`id: ${a.id}`);
+    expect(first).toContain('tags: ["x"]');
+    expect(first).toContain('alpha note');
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it('import rejects non-membrain payloads and bad sources fall back', async () => {

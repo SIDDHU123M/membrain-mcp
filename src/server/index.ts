@@ -32,6 +32,11 @@ async function main() {
   const dataDir = path.resolve(arg('--data') ?? 'data');
   const dbFile = path.join(dataDir, 'memory.db');
 
+  if (has('doctor')) {
+    await doctor(dbFile, port);
+    return;
+  }
+
   const log = stdio ? console.error : console.log; // stdout is JSON-RPC in stdio mode
 
   if (!['127.0.0.1', 'localhost', '::1'].includes(host) && !has('--i-understand-no-auth')) {
@@ -114,6 +119,56 @@ async function main() {
       spawn(cmd, args as string[], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
     } catch {}
   }
+}
+
+/** `membrain doctor` — checks the five things that actually break installs. */
+async function doctor(dbFile: string, port: number) {
+  const { llmConfig } = await import('../core/ollama.js');
+  const { getSetting } = await import('../core/db.js');
+  let failed = false;
+  const report = (okay: boolean, label: string, detail?: string) => {
+    if (!okay) failed = true;
+    console.log(`  ${okay ? '✓' : '✗'} ${label}${detail ? ` — ${detail}` : ''}`);
+  };
+  console.log('membrain doctor\n');
+
+  const major = Number(process.versions.node.split('.')[0]);
+  report(major >= 20, `node ${process.versions.node}`, major >= 20 ? undefined : 'needs >= 20');
+
+  try {
+    const db = openDb(dbFile);
+    const m = (db.prepare('SELECT COUNT(*) AS n FROM memories').get() as { n: number }).n;
+    const c = (db.prepare('SELECT COUNT(*) AS n FROM chunks').get() as { n: number }).n;
+    report(true, 'database + sqlite-vec', `${dbFile}: ${m} memories, ${c} chunks`);
+
+    const embModel = getSetting(db, 'embedding_model') ?? 'not set (first boot will set it)';
+    report(true, 'embeddings', `${getSetting(db, 'embedding_provider') ?? 'local'} / ${embModel}`);
+
+    const llm = await llmConfig(db);
+    if (llm) {
+      report(true, 'clerk (LLM)', `${llm.kind} / ${llm.model}`);
+    } else {
+      report(
+        false,
+        'clerk (LLM)',
+        'no Ollama reachable and no cloud key configured — imports still work, insights need a brain (Settings tab)',
+      );
+    }
+  } catch (err) {
+    report(false, 'database', (err as Error).message);
+  }
+
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/stats`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    report(true, `port ${port}`, res.ok ? 'a membrain server is already running here' : 'occupied by something else');
+  } catch {
+    report(true, `port ${port}`, 'free — ready to start');
+  }
+
+  console.log(failed ? '\nsomething needs attention.' : '\nall clear.');
+  process.exitCode = failed ? 1 : 0;
 }
 
 main().catch((err) => {

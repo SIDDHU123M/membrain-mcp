@@ -1,6 +1,6 @@
 {
   "name": "membrain-mcp",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Self-hosted AI memory ledger. You and your agents share one memory store over MCP — one SQLite file, web UI, REST, works offline.",
   "keywords": [
     "mcp",
@@ -40,6 +40,7 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run test && npm run build",
     "prepack": "node scripts/swap-readme.mjs npm",
+    "postpublish": "node scripts/postpublish.mjs",
     "postpack": "node scripts/swap-readme.mjs restore",
     "export:landing": "npm run build && node scripts/export-landing.mjs",
     "deploy:landing": "npm run export:landing && wrangler pages deploy --branch main",

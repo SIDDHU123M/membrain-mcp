@@ -64,6 +64,45 @@ export async function importMemoriesJson(
   return out;
 }
 
+/** Export every memory as one markdown file with frontmatter — a git-diffable mirror of the ledger. */
+export function exportMarkdownFolder(db: DB, dir: string): { dir: string; files: number } {
+  const rows = db
+    .prepare('SELECT id, content, title, tags, source, created_at, updated_at FROM memories ORDER BY id')
+    .all() as {
+    id: number;
+    content: string;
+    title: string | null;
+    tags: string;
+    source: string;
+    created_at: string;
+    updated_at: string;
+  }[];
+  fs.mkdirSync(dir, { recursive: true });
+  for (const r of rows) {
+    const slug = (r.title ?? r.content)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48);
+    const front = [
+      '---',
+      `id: ${r.id}`,
+      ...(r.title ? [`title: ${JSON.stringify(r.title)}`] : []),
+      `tags: ${r.tags}`,
+      `source: ${r.source}`,
+      `created: ${r.created_at}`,
+      `updated: ${r.updated_at}`,
+      '---',
+      '',
+    ].join('\n');
+    fs.writeFileSync(
+      path.join(dir, `${String(r.id).padStart(4, '0')}${slug ? '-' + slug : ''}.md`),
+      front + r.content + '\n',
+    );
+  }
+  return { dir, files: rows.length };
+}
+
 /** Consistent snapshot of the live DB (safe under WAL). Returns the snapshot path. */
 export async function backupDbFile(db: DB, dataDir: string): Promise<string> {
   const dir = path.join(dataDir, 'backups');

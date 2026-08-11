@@ -447,13 +447,22 @@ code.pill {
   border-top: 1px solid var(--line);
 }
 
-/* the tour points at a rail item by lifting it above the veil and ringing it */
-.tour-glow {
-  position: relative;
-  z-index: 61;
-  outline: 2px solid var(--accent-line);
-  outline-offset: 2px;
-  background: var(--surface);
+/* the tour's spotlight: a window cut into the veil. The giant box-shadow IS the
+   veil — everything outside the window dims, the target stays fully lit, and the
+   window glides between targets because top/left/width/height transition. */
+.tour-spot {
+  position: fixed;
+  border-radius: 6px;
+  pointer-events: none;
+  box-shadow: 0 0 0 200vmax color-mix(in srgb, var(--bg) 68%, transparent);
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  transition:
+    top 0.4s cubic-bezier(0.33, 1, 0.68, 1),
+    left 0.4s cubic-bezier(0.33, 1, 0.68, 1),
+    width 0.4s cubic-bezier(0.33, 1, 0.68, 1),
+    height 0.4s cubic-bezier(0.33, 1, 0.68, 1),
+    outline-color 0.4s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -10,6 +10,7 @@ import AgentImport from './AgentImport.js';
 import Docs from './Docs.js';
 import Settings from './Settings.js';
 import Tour, { tourPending } from './Tour.js';
+import Palette, { type PaletteAction } from './Palette.js';
 
 const TABS = [
   { no: '01', name: 'Memories' },
@@ -29,7 +30,7 @@ export default function App() {
     return savedTheme === 'dark' ? 'dark' : 'light';
   });
   const [touring, setTouring] = useState(() => tourPending());
-  const [tourTab, setTourTab] = useState<string | null>(null);
+  const [palette, setPalette] = useState(false);
   const [jumpMemory, setJumpMemory] = useState<Memory | null>(null);
 
   const openMemory = useCallback((m: Memory) => {
@@ -65,6 +66,40 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setPalette((p) => !p);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const paletteActions: PaletteAction[] = [
+    ...TABS.map((t) => ({
+      label: `Go to ${t.name}`,
+      hint: t.no,
+      run: () => setTab(t.name),
+    })),
+    {
+      label: 'Search the ledger',
+      hint: '/',
+      run: () => {
+        setTab('Memories');
+        requestAnimationFrame(() => document.getElementById('recall-input')?.focus());
+      },
+    },
+    {
+      label: theme === 'light' ? 'Switch to night ledger' : 'Switch to paper',
+      run: () => setTheme((t) => (t === 'light' ? 'dark' : 'light')),
+    },
+    { label: 'Download DB snapshot', run: () => window.open('/api/backup', '_blank') },
+    { label: 'Export memories JSON', run: () => window.open('/api/export/memories', '_blank') },
+    { label: 'Replay the tour', run: () => setTouring(true) },
+  ];
+
   return (
     <div className="mx-auto grid min-h-screen max-w-6xl grid-cols-1 md:grid-cols-[230px_1fr]">
       <a className="skip-link" href="#main">
@@ -92,9 +127,10 @@ export default function App() {
           {TABS.map((t) => (
             <button
               key={t.name}
+              data-tour={t.name}
               onClick={() => setTab(t.name)}
               aria-current={tab === t.name ? 'page' : undefined}
-              className={`rail-item shrink-0 md:shrink ${touring && tourTab === t.name ? 'tour-glow' : ''}`}
+              className="rail-item shrink-0 md:shrink"
             >
               <span className="rail-no">{t.no}</span>
               <span>{t.name}</span>
@@ -152,15 +188,13 @@ export default function App() {
         {tab === 'Settings' && <Settings />}
       </main>
 
+      {palette && <Palette actions={paletteActions} onClose={() => setPalette(false)} />}
+
       {touring && (
         <Tour
-          onTab={(t) => {
-            setTab(t as Tab);
-            setTourTab(t);
-          }}
+          onTab={(t) => setTab(t as Tab)}
           onClose={() => {
             setTouring(false);
-            setTourTab(null);
             setTab('Memories');
           }}
         />

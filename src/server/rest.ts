@@ -26,7 +26,7 @@ import {
   exportSkills,
   importSkillsJson,
 } from '../core/skills.js';
-import { backupDbFile, exportMemories, importMemoriesJson } from '../core/backup.js';
+import { backupDbFile, exportMarkdownFolder, exportMemories, importMemoriesJson } from '../core/backup.js';
 import { findDuplicates } from '../core/dedupe.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -181,6 +181,15 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     return reply
       .header('content-disposition', 'attachment; filename="membrain-memories.json"')
       .send(exportMemories(db, ids?.length ? ids : undefined));
+  });
+
+  app.post<{ Body: { dir?: string } }>('/api/export/markdown', async (req) => {
+    const dir = path.resolve(
+      typeof req.body?.dir === 'string' && req.body.dir.trim()
+        ? req.body.dir.trim()
+        : path.join(path.dirname(dbFile), 'export-md'),
+    );
+    return exportMarkdownFolder(db, dir);
   });
 
   app.post('/api/import/memories', async (req) => {

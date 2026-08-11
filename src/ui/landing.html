@@ -95,6 +95,7 @@
 
       /* hero */
       .hero { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 48px; align-items: center; padding: 64px 0 80px; }
+      .hero > * { min-width: 0; }
       @media (max-width: 860px) { .hero { grid-template-columns: 1fr; padding-top: 32px; } }
       .hero h1 { font-size: clamp(42px, 6.4vw, 74px); line-height: 1.03; font-weight: 560; }
       .hero h1 em { font-style: italic; font-variation-settings: 'SOFT' 90, 'WONK' 1; }
@@ -138,16 +139,20 @@
       .feature h3 small { display: block; font-family: var(--sans); font-size: 11px; font-weight: 650; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cream-3); margin-top: 6px; }
       .feature p { color: var(--cream-2); font-size: 14.5px; }
 
-      /* how it works */
-      .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-      @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
-      .step { background: var(--sheet); border: 1px solid var(--hairline); border-radius: 4px; padding: 22px; }
+      /* how it works — cards flex-column so every code plate sits on the same
+         baseline; min-width:0 lets the pre scroll instead of blowing the grid open */
+      .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }
+      @media (max-width: 960px) { .steps { grid-template-columns: 1fr; } }
+      .step {
+        display: flex; flex-direction: column; min-width: 0;
+        background: var(--sheet); border: 1px solid var(--hairline); border-radius: 4px; padding: 22px;
+      }
       .step .no { font-family: var(--mono); font-size: 11px; color: var(--cream-3); }
       .step h3 { font-size: 17px; margin: 8px 0 8px; }
-      .step p { font-size: 13.5px; color: var(--cream-2); }
+      .step p { font-size: 13.5px; color: var(--cream-2); margin-bottom: 14px; }
       .step pre {
-        margin-top: 14px; background: var(--plate); border: 1px solid var(--plate);
-        border-radius: 3px; padding: 12px 14px; overflow-x: auto;
+        margin-top: auto; background: var(--plate); border: 1px solid var(--plate);
+        border-radius: 3px; padding: 12px 14px; overflow-x: auto; max-width: 100%;
         font-family: var(--mono); font-size: 12px; line-height: 1.6; color: #cfc8b8;
       }
 
@@ -157,6 +162,11 @@
       .tool code { font-family: var(--mono); font-size: 13.5px; color: var(--cream); white-space: nowrap; }
       .tool .dots { flex: 1; border-bottom: 1px dotted var(--hairline-strong); transform: translateY(-4px); min-width: 30px; }
       .tool span { font-size: 13.5px; color: var(--cream-2); text-align: right; }
+      @media (max-width: 560px) {
+        .tool { flex-wrap: wrap; }
+        .tool .dots { display: none; }
+        .tool span { flex-basis: 100%; text-align: left; }
+      }
 
       /* principles */
       .principles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 48px; border-top: 1px solid var(--hairline); }

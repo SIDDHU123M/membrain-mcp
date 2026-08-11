@@ -336,6 +336,22 @@ export default function Settings() {
               onChange={(e) => void importJson(e.target.files?.[0], 'skills')}
             />
           </label>
+          <button
+            className="btn w-full justify-center sm:col-span-2"
+            onClick={() => {
+              setNotice(null);
+              void fetch('/api/export/markdown', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: '{}',
+              })
+                .then((r) => r.json() as Promise<{ dir: string; files: number }>)
+                .then((r) => setNotice(`Wrote ${r.files} markdown files to ${r.dir}`))
+                .catch((e: Error) => setNotice(e.message));
+            }}
+          >
+            Export as Markdown folder (one file per entry, git-friendly)
+          </button>
         </div>
       </section>
 
