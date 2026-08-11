@@ -81,11 +81,11 @@ export default function Tour({
   }, [i]);
 
   return (
-    <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Tour">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center px-3 pt-20 pb-3 sm:px-4 sm:pt-24 sm:pb-4" role="dialog" aria-modal="true" aria-label="Tour">
       {/* light veil — the real app stays visible behind it */}
       <div className="absolute inset-0 bg-[var(--bg)]/55" onClick={finish} aria-hidden="true" />
 
-      <div className="card absolute bottom-4 left-1/2 max-h-[85vh] w-[min(30rem,92vw)] -translate-x-1/2 overflow-y-auto p-5 md:bottom-10">
+      <div className="card relative z-10 w-full max-w-[30rem] max-h-[min(82vh,36rem)] overflow-y-auto p-4 sm:p-5 sm:mb-2">
         <div className="rule-double" aria-hidden="true" />
         <div className="flex items-baseline gap-3 pt-3">
           <span className="label">

@@ -24,7 +24,10 @@ type Tab = (typeof TABS)[number]['name'];
 export default function App() {
   const [tab, setTab] = useState<Tab>('Memories');
   const [stats, setStats] = useState<Stats | null>(null);
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme ?? 'light');
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem('theme') || localStorage.getItem('themePreference') || localStorage.theme;
+    return savedTheme === 'dark' ? 'dark' : 'light';
+  });
   const [touring, setTouring] = useState(() => tourPending());
   const [tourTab, setTourTab] = useState<string | null>(null);
   const [jumpMemory, setJumpMemory] = useState<Memory | null>(null);
@@ -36,7 +39,9 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.theme = theme;
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('theme', theme);
+    localStorage.setItem('themePreference', theme);
   }, [theme]);
 
   const refreshStats = useCallback(() => {
