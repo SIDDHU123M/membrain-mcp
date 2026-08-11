@@ -4,12 +4,12 @@ import fs from 'node:fs';
 
 const mode = process.argv[2];
 if (mode === 'npm') {
-  fs.copyFileSync('README.md', 'README.github.md.bak');
+  fs.copyFileSync('README.md', '.readme-github.bak');
   fs.copyFileSync('scripts/README.npm.md', 'README.md');
 } else if (mode === 'restore') {
-  if (fs.existsSync('README.github.md.bak')) {
-    fs.copyFileSync('README.github.md.bak', 'README.md');
-    fs.rmSync('README.github.md.bak');
+  if (fs.existsSync('.readme-github.bak')) {
+    fs.copyFileSync('.readme-github.bak', 'README.md');
+    fs.rmSync('.readme-github.bak');
   }
 } else {
   console.error('usage: swap-readme.mjs npm|restore');
