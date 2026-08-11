@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  forceCenter,
+  forceCollide,
+  forceLink,
+  forceManyBody,
+  forceSimulation,
+  type Simulation,
+  type SimulationLinkDatum,
+  type SimulationNodeDatum,
+} from 'd3-force';
 import { api, type Memory, type MindMap as MindMapData, type MindMapNode } from './api.js';
 import { kindColor, relativeTime } from './util.js';
 
@@ -7,67 +17,20 @@ interface Pos {
   y: number;
 }
 
+interface SimNode extends SimulationNodeDatum {
+  id: string;
+}
+
 const W = 1000;
 const H = 640;
 
-/* Deterministic hand-rolled force layout — repulsion + edge springs + center pull.
-   ponytail: good enough for ≤25 nodes; a real graph lib only if this ever grows. */
-function layout(map: MindMapData): Map<string, Pos> {
-  const pos = new Map<string, Pos>();
-  map.nodes.forEach((n) => {
-    let h = 0;
-    for (const c of n.id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    const angle = (h % 360) * (Math.PI / 180);
-    const radius = 120 + (h % 160);
-    pos.set(n.id, {
-      x: W / 2 + Math.cos(angle) * radius,
-      y: H / 2 + Math.sin(angle) * radius * 0.7,
-    });
-  });
-  const ids = map.nodes.map((n) => n.id);
-  for (let iter = 0; iter < 260; iter++) {
-    const force = new Map<string, Pos>(ids.map((id) => [id, { x: 0, y: 0 }]));
-    // repulsion
-    for (let i = 0; i < ids.length; i++) {
-      for (let j = i + 1; j < ids.length; j++) {
-        const a = pos.get(ids[i])!;
-        const b = pos.get(ids[j])!;
-        const dx = a.x - b.x;
-        const dy = a.y - b.y;
-        const d2 = Math.max(dx * dx + dy * dy, 80);
-        const f = 22000 / d2;
-        const d = Math.sqrt(d2);
-        force.get(ids[i])!.x += (dx / d) * f;
-        force.get(ids[i])!.y += (dy / d) * f;
-        force.get(ids[j])!.x -= (dx / d) * f;
-        force.get(ids[j])!.y -= (dy / d) * f;
-      }
-    }
-    // springs
-    for (const e of map.edges) {
-      const a = pos.get(e.from)!;
-      const b = pos.get(e.to)!;
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const d = Math.max(Math.hypot(dx, dy), 1);
-      const f = (d - 150) * 0.02;
-      force.get(e.from)!.x += (dx / d) * f;
-      force.get(e.from)!.y += (dy / d) * f;
-      force.get(e.to)!.x -= (dx / d) * f;
-      force.get(e.to)!.y -= (dy / d) * f;
-    }
-    const cool = 1 - iter / 260;
-    for (const id of ids) {
-      const p = pos.get(id)!;
-      const f = force.get(id)!;
-      // center gravity
-      f.x += (W / 2 - p.x) * 0.004;
-      f.y += (H / 2 - p.y) * 0.006;
-      p.x = Math.min(W - 70, Math.max(70, p.x + f.x * cool * 0.5));
-      p.y = Math.min(H - 50, Math.max(50, p.y + f.y * cool * 0.5));
-    }
-  }
-  return pos;
+// deterministic seed so the sim starts from the same shape every time
+function seed(id: string): Pos {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const angle = (h % 360) * (Math.PI / 180);
+  const radius = 120 + (h % 160);
+  return { x: W / 2 + Math.cos(angle) * radius, y: H / 2 + Math.sin(angle) * radius * 0.7 };
 }
 
 const KINDS = ['person', 'project', 'tool', 'preference', 'topic', 'fact'] as const;
@@ -81,9 +44,12 @@ export default function MindMap() {
   const [nodeMemories, setNodeMemories] = useState<Memory[]>([]);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, w: W, h: H });
   const dragging = useRef<{ x: number; y: number } | null>(null);
-  // node dragging, obsidian-style: positions live in state; a drag moves one node, edges follow
+  // live d3-force simulation (the same engine Obsidian's graph uses):
+  // drag a node and the rest of the constellation tugs along and resettles
   const [positions, setPositions] = useState<Map<string, Pos>>(new Map());
   const nodeDrag = useRef<{ id: string; moved: boolean } | null>(null);
+  const simRef = useRef<Simulation<SimNode, SimulationLinkDatum<SimNode>> | null>(null);
+  const simNodes = useRef<Map<string, SimNode>>(new Map());
 
   useEffect(() => {
     void api
@@ -112,9 +78,46 @@ export default function MindMap() {
   }, [selected]);
 
   useEffect(() => {
-    setPositions(map ? layout(map) : new Map<string, Pos>());
+    simRef.current?.stop();
+    if (!map) {
+      setPositions(new Map());
+      return;
+    }
+    const nodes: SimNode[] = map.nodes.map((n) => ({ id: n.id, ...seed(n.id) }));
+    simNodes.current = new Map(nodes.map((n) => [n.id, n]));
+    const links: SimulationLinkDatum<SimNode>[] = map.edges.map((e) => ({
+      source: e.from,
+      target: e.to,
+    }));
+    const sim = forceSimulation(nodes)
+      .force(
+        'link',
+        forceLink<SimNode, SimulationLinkDatum<SimNode>>(links)
+          .id((d) => d.id)
+          .distance(150)
+          .strength(0.5),
+      )
+      .force('charge', forceManyBody().strength(-320))
+      .force('center', forceCenter(W / 2, H / 2))
+      .force('collide', forceCollide(36))
+      .on('tick', () => {
+        setPositions(new Map(nodes.map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }])));
+      });
+    simRef.current = sim;
+    return () => {
+      sim.stop();
+    };
   }, [map]);
   const pos = positions;
+
+  // pointer position → simulation coordinates
+  const toSim = (e: React.PointerEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return {
+      x: viewBox.x + ((e.clientX - rect.left) / rect.width) * viewBox.w,
+      y: viewBox.y + ((e.clientY - rect.top) / rect.height) * viewBox.h,
+    };
+  };
 
   const build = async () => {
     setBuilding(true);
@@ -196,26 +199,19 @@ export default function MindMap() {
                 (e.target as Element).setPointerCapture?.(e.pointerId);
               }}
               onPointerMove={(e) => {
-                const scale = viewBox.w / (e.currentTarget.clientWidth || W);
                 if (nodeDrag.current) {
-                  const { id } = nodeDrag.current;
+                  // obsidian drag: pin the node to the pointer, let the sim pull the rest
                   nodeDrag.current.moved = true;
-                  const last = dragging.current ?? { x: e.clientX, y: e.clientY };
-                  setPositions((p) => {
-                    const next = new Map(p);
-                    const cur = next.get(id);
-                    if (cur) {
-                      next.set(id, {
-                        x: cur.x + (e.clientX - last.x) * scale,
-                        y: cur.y + (e.clientY - last.y) * scale,
-                      });
-                    }
-                    return next;
-                  });
-                  dragging.current = { x: e.clientX, y: e.clientY };
+                  const n = simNodes.current.get(nodeDrag.current.id);
+                  if (n) {
+                    const p = toSim(e);
+                    n.fx = p.x;
+                    n.fy = p.y;
+                  }
                   return;
                 }
                 if (!dragging.current) return;
+                const scale = viewBox.w / (e.currentTarget.clientWidth || W);
                 // compute the delta NOW — the updater runs later, when the ref may
                 // already be nulled by pointerup (the old null.x crash)
                 const dx = (e.clientX - dragging.current.x) * scale;
@@ -224,9 +220,18 @@ export default function MindMap() {
                 dragging.current = { x: e.clientX, y: e.clientY };
               }}
               onPointerUp={() => {
-                if (nodeDrag.current && !nodeDrag.current.moved && map) {
-                  const n = map.nodes.find((x) => x.id === nodeDrag.current!.id);
-                  if (n) setSelected(selected?.id === n.id ? null : n);
+                if (nodeDrag.current) {
+                  const n = simNodes.current.get(nodeDrag.current.id);
+                  if (n) {
+                    // release the pin — the graph springs back and settles
+                    n.fx = null;
+                    n.fy = null;
+                  }
+                  simRef.current?.alphaTarget(0);
+                  if (!nodeDrag.current.moved && map) {
+                    const node = map.nodes.find((x) => x.id === nodeDrag.current!.id);
+                    if (node) setSelected(selected?.id === node.id ? null : node);
+                  }
                 }
                 nodeDrag.current = null;
                 dragging.current = null;
@@ -287,7 +292,13 @@ export default function MindMap() {
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       nodeDrag.current = { id: n.id, moved: false };
-                      dragging.current = { x: e.clientX, y: e.clientY };
+                      const sn = simNodes.current.get(n.id);
+                      if (sn) {
+                        sn.fx = sn.x;
+                        sn.fy = sn.y;
+                      }
+                      // reheat the simulation so the graph reacts while dragging
+                      simRef.current?.alphaTarget(0.3).restart();
                       (e.currentTarget.ownerSVGElement as SVGSVGElement | null)?.setPointerCapture?.(
                         e.pointerId,
                       );
