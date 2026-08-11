@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Membrain — one memory, every AI</title>
+    <title>Membrain: one memory, every AI</title>
     <meta
       name="description"
-      content="Self-hosted memory for you and your AI agents. One SQLite file, a web ledger, and an MCP endpoint — no accounts, no cloud, works offline."
+      content="Self-hosted memory for you and your AI agents. One SQLite file, a web ledger, and an MCP endpoint. No accounts, no cloud, works offline."
     />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>" />
     <script type="module" src="/landing.ts"></script>
@@ -210,9 +210,7 @@
             <div class="label rise">Self-hosted · Local-first · MCP</div>
             <h1 class="rise d1" style="margin-top: 18px; color: var(--cream)">One memory,<br /><em>every</em> AI.</h1>
             <p class="sub rise d2">
-              Membrain is a memory ledger you run on your own machine. You write to it from a web
-              UI; your agents — Claude, Cursor, anything that speaks MCP — read and write the same
-              store. What one remembers, all of them know.
+              Membrain is a memory ledger that runs on your own machine. You write to it from the web UI. Your agents write to it over MCP: Claude, Cursor, anything that speaks the protocol. What one remembers, all of them know.
             </p>
             <div class="cta rise d3">
               <span class="npx"><b>$</b> npx membrain</span>
@@ -220,7 +218,7 @@
             </div>
           </div>
           <div class="art rise d2">
-            <img src="./assets/membrain-logo.png" alt="Membrain — half brain, half database" />
+            <img src="./assets/membrain-logo.png" alt="Membrain logo: half brain, half database" />
           </div>
         </div>
       </div>
@@ -243,8 +241,7 @@
             <h2>Everything a shared brain needs</h2>
           </div>
           <p class="sec-sub">
-            Every entry records who wrote it — you, an agent, or an import. The whole store is one
-            file on your disk: copy it and that's a backup, delete it and it's gone.
+            Every entry records who wrote it: you, an agent, or an import. The whole store is one file on your disk. Copy it and that's a backup. Delete it and it's gone.
           </p>
 
           <div class="features">
@@ -252,9 +249,7 @@
               <span class="no">01</span>
               <h3>Shared memory over MCP<small>agents read &amp; write</small></h3>
               <p>
-                One config line connects Claude Code, Claude Desktop, Cursor, or any MCP client —
-                Streamable HTTP or stdio. Eight tools, including a one-call
-                <code class="pill">memory_context</code> digest for session starts and bulk saves.
+                One config line connects Claude Code, Claude Desktop, Cursor, or any other MCP client, over Streamable HTTP or stdio. Eight tools, including a single <code class="pill">memory_context</code> call that briefs an agent at the start of a session.
               </p>
             </div>
             <div class="feature">
@@ -262,53 +257,42 @@
               <h3>Recall that actually finds it<small>hybrid search</small></h3>
               <p>
                 Semantic vectors (sqlite-vec) and keyword match (FTS5) fused with reciprocal rank
-                fusion, plus a gentle recency boost. Local embeddings by default — no API key, no
-                network.
+                fusion, plus a gentle recency boost. Embeddings run locally by default, so search needs no API key and no network.
               </p>
             </div>
             <div class="feature">
               <span class="no">03</span>
               <h3>The clerk<small>your local LLM, put to work</small></h3>
               <p>
-                A local Ollama organizes the store into topics incrementally with live progress,
-                drafts titles one entry at a time, summarizes any scope, and finds duplicate
-                entries by vector similarity for one-click strike-through.
+                Your local model organizes the store into topics with live progress, drafts titles one entry at a time, summarizes whatever you select, and flags duplicates so you can strike them in one click. No GPU? Paste an API key for OpenAI, Claude, OpenRouter, or any compatible endpoint.
               </p>
             </div>
             <div class="feature">
               <span class="no">04</span>
               <h3>Nothing inked unreviewed<small>proposal queue</small></h3>
               <p>
-                Every change Membrain's own AI wants to make is staged for your accept/reject —
-                old value struck through, new value beside it. Imports work the same way: dropped
-                PDFs and docs become candidate entries you review, edit, and selectively file.
+                Every change Membrain's own AI wants to make is staged for your review, with the old value struck through and the new one beside it. Imports work the same way. Dropped PDFs and docs become candidate entries that you edit, untick, and file yourself.
               </p>
             </div>
             <div class="feature">
               <span class="no">05</span>
               <h3>The atlas<small>knowledge map</small></h3>
               <p>
-                The people, projects, tools, and preferences in your store — drawn as an
-                interactive constellation with the relationships between them. Pure visualization;
-                retrieval never depends on it.
+                An interactive constellation of the people, projects, tools, and preferences in your store, and how they connect. It is pure visualization. Retrieval never depends on it.
               </p>
             </div>
             <div class="feature">
               <span class="no">06</span>
               <h3>Skills &amp; agent memory<small>manage the whole setup</small></h3>
               <p>
-                Edit your agents' SKILL.md files with markdown preview, and pull the memory your
-                agents already keep on disk into the ledger — tracked by content hash so nothing
-                is ever imported twice.
+                Edit your agents' SKILL.md files with markdown preview, and pull the memory your agents already keep on disk into the ledger. Content hashes track what came in, so nothing gets imported twice.
               </p>
             </div>
             <div class="feature">
               <span class="no">07</span>
               <h3>Backups you don't think about<small>snapshot on boot</small></h3>
               <p>
-                A consistent SQLite snapshot on every start (keeping the last five), one-click
-                snapshot downloads, and portable JSON export/import for memories and skills —
-                full or selective.
+                A consistent SQLite snapshot on every start, keeping the last five. One-click snapshot downloads, and portable JSON export and import for memories and skills, full or selective.
               </p>
             </div>
           </div>
@@ -322,7 +306,7 @@
             <span class="label">Five minutes</span>
             <h2>How it works</h2>
           </div>
-          <p class="sec-sub">Fresh install to a memory saved from your agent and visible in the ledger.</p>
+          <p class="sec-sub">From fresh install to a memory saved by your agent and sitting in the ledger.</p>
           <div class="steps">
             <div class="step">
               <span class="no">STEP 01</span>
@@ -389,11 +373,11 @@
             </div>
             <div class="principle">
               <h3>“MCP is the front door for AIs.”</h3>
-              <p>Any MCP-compatible tool connects with one config entry and gets full read–write memory. Same code path as the UI — an agent's entry looks exactly like yours.</p>
+              <p>Any MCP-compatible tool connects with one config entry and gets full read and write access. Same code path as the UI, so an agent's entry looks exactly like yours.</p>
             </div>
             <div class="principle">
               <h3>“No accounts, by design.”</h3>
-              <p>It runs on your machine or your private network. Security is the network boundary — localhost, Tailscale, WireGuard — not passwords.</p>
+              <p>It runs on your machine or your private network. Security is the network boundary: localhost, Tailscale, or WireGuard. Not passwords.</p>
             </div>
             <div class="principle">
               <h3>“Human-inspectable.”</h3>
@@ -406,8 +390,7 @@
             <p>
               There is no auth. Anywhere. The default bind is <code>127.0.0.1</code> and exposing
               anything else requires the explicit flag pair
-              <code>--host … --i-understand-no-auth</code>. Never put Membrain on a public
-              interface — anyone who can reach the port owns your memory.
+              <code>--host … --i-understand-no-auth</code>. Never put Membrain on a public interface. Anyone who can reach the port owns your memory.
             </p>
           </div>
         </div>
@@ -426,7 +409,7 @@
 
     <footer>
       <div class="wrap">
-        <span>Membrain — the memory ledger</span>
+        <span>Membrain, the memory ledger</span>
         <span>Local-first · Offline-capable · No telemetry</span>
         <span class="right">One SQLite file. That's the whole cloud.</span>
       </div>
