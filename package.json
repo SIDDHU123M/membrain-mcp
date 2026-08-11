@@ -1,7 +1,17 @@
 {
-  "name": "membrain",
+  "name": "membrain-mcp",
   "version": "0.1.0",
-  "description": "Self-hosted, single-user AI memory server. One SQLite file, web UI + REST + MCP.",
+  "description": "Self-hosted AI memory ledger. You and your agents share one memory store over MCP — one SQLite file, web UI, REST, works offline.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "memory",
+    "ai-agents",
+    "self-hosted",
+    "sqlite",
+    "ollama",
+    "local-first"
+  ],
   "type": "module",
   "license": "MIT",
   "bin": {
