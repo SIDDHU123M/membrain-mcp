@@ -876,10 +876,10 @@ export default function Memories({
       {/* the clerk — every AI operation, with live reporting */}
       <section className="rise" aria-label="The clerk — organize with AI">
         <div className="rule-double" aria-hidden="true" />
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5 py-2.5">
-          <div className="min-w-0 flex-1">
+        <div className="py-2.5">
+          <div className="flex flex-wrap items-baseline gap-x-3">
             <span className="label">The clerk</span>
-            <p className="display mt-0.5 text-[13.5px] italic text-[var(--text-2)]" role="status">
+            <p className="display text-[13.5px] italic text-[var(--text-2)]" role="status">
               {aiOp
                 ? aiStatus
                 : (aiStatus ??
@@ -888,7 +888,7 @@ export default function Memories({
                     : `${memories.length} entries · ${untitled} untitled · not yet organized`))}
             </p>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
             <button className="btn-primary" onClick={() => runMap(false)} disabled={aiOp !== null}>
               {map ? 'Reorganize' : 'Organize'}
             </button>
