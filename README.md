@@ -1,21 +1,33 @@
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/SIDDHU123M/membrain-mcp/master/assets/membrain-logo.png" alt="Membrain" width="300" />
+
 # Membrain
 
-**One memory, every AI.** A self-hosted memory ledger you run on your own machine. You write to it
-from a web UI. Your agents write to it over MCP: Claude Code, Claude Desktop, Cursor, anything that
-speaks the protocol. What one remembers, all of them know.
+**One memory, every AI.**
 
-Everything lives in one SQLite file on your disk. No accounts, no cloud, no telemetry. Works fully
-offline.
+*A self-hosted memory ledger you run on your own machine. Your agents share it over MCP.*
+
+[![npm](https://img.shields.io/npm/v/membrain-mcp?style=flat-square&color=1e3a8a&label=npm)](https://www.npmjs.com/package/membrain-mcp)
+[![license](https://img.shields.io/badge/license-MIT-1e3a8a?style=flat-square)](LICENSE)
+[![node](https://img.shields.io/badge/node-%E2%89%A520-1e3a8a?style=flat-square)](package.json)
+[![MCP](https://img.shields.io/badge/protocol-MCP-1e3a8a?style=flat-square)](https://modelcontextprotocol.io)
+[![DevLune](https://img.shields.io/badge/built%20by-DevLune-4F8EF7?style=flat-square)](https://devlune.in)
+
+</div>
+
+---
+
+You write to the ledger from a paper-and-ink web UI. Your agents write to it over MCP: Claude Code,
+Claude Desktop, Cursor, anything that speaks the protocol. What one remembers, all of them know.
+
+Everything lives in **one SQLite file** on your disk. No accounts, no cloud, no telemetry. Works
+fully offline.
 
 ## Install
 
 ```bash
 npm install -g membrain-mcp
-```
-
-Then start it:
-
-```bash
 membrain
 ```
 
@@ -23,10 +35,51 @@ That's the whole setup. The server starts on `http://127.0.0.1:7777` and the led
 browser. The first run downloads a small local embedding model (about 80 MB) into `./data`; after
 that everything works offline.
 
-Prefer not to install? One-shot:
+Prefer not to install?
 
 ```bash
 npx membrain-mcp
+```
+
+## How it fits together
+
+```mermaid
+%%{init: {'theme':'base','themeVariables':{
+  'primaryColor':'#fdfcf7','primaryTextColor':'#1c1917','primaryBorderColor':'#1e3a8a',
+  'lineColor':'#57534e','fontFamily':'Georgia, serif','fontSize':'14px',
+  'clusterBkg':'#f4f1e8','clusterBorder':'#b8b09a','edgeLabelBackground':'#fdfcf7'
+}}}%%
+flowchart LR
+    subgraph agents ["Your agents"]
+        CC["Claude Code"]
+        CD["Claude Desktop"]
+        CU["Cursor · any MCP client"]
+    end
+    YOU(["You · browser"])
+
+    CC -- "HTTP /mcp" --> MCP
+    CU -- "HTTP /mcp" --> MCP
+    CD -- "stdio" --> MCP
+    YOU -- "web ledger + REST" --> REST
+
+    subgraph membrain ["membrain · one process"]
+        MCP["MCP server<br/>8 tools"]
+        REST["REST + web UI"]
+        CORE["core<br/>chunk · embed · hybrid search"]
+        LLM["the clerk<br/>Ollama or cloud key"]
+        MCP --> CORE
+        REST --> CORE
+        CORE -.-> LLM
+    end
+
+    CORE --> DB[("memory.db<br/>SQLite + sqlite-vec + FTS5")]
+
+    classDef agent fill:#fdfcf7,stroke:#1e3a8a,stroke-width:1.5px,color:#1c1917
+    classDef human fill:#fdfcf7,stroke:#0f766e,stroke-width:1.5px,color:#1c1917
+    classDef store fill:#1c1917,stroke:#1c1917,color:#f4f1e8
+    class CC,CD,CU agent
+    class YOU human
+    class DB store
 ```
 
 ## Command
@@ -138,7 +191,7 @@ Keep the port binding on `127.0.0.1`. The container boundary is not an auth laye
 ## Development
 
 ```bash
-git clone <repo> && cd membrain
+git clone https://github.com/SIDDHU123M/membrain-mcp.git && cd membrain-mcp
 npm install
 npm run dev        # server via tsx
 npm test           # vitest, 50 tests, no network
@@ -148,6 +201,16 @@ npm run build      # dist/server + dist/ui
 Architecture and working rules live in `CLAUDE.md`; the product spec in `docs/membrain-prd.md`;
 agent connection details in `docs/connect-agents.md`.
 
-## License
+---
 
-MIT
+<div align="center">
+
+**Built by [DevLune](https://devlune.in)**
+
+*Crafted in the dark. Shipped to the world.*
+
+[devlune.in](https://devlune.in) · [@dev.lune](https://instagram.com/dev.lune) · [sidharth@devlune.in](mailto:sidharth@devlune.in)
+
+MIT © DevLune
+
+</div>
