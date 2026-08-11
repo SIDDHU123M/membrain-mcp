@@ -143,7 +143,10 @@ export function Markdown({ text }: { text: string }) {
               <thead>
                 <tr>
                   {rows[0].map((c, j) => (
-                    <th key={j} className="label border-b-2 border-[var(--text)] px-2.5 py-1.5 text-left">
+                    <th
+                      key={j}
+                      className="border-b-2 border-[var(--text)] px-2.5 py-1.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--text-3)]"
+                    >
                       {inline(c)}
                     </th>
                   ))}
