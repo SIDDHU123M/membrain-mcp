@@ -106,7 +106,9 @@ export default function Skills() {
         <div className="border-b border-[var(--line-strong)]" aria-hidden="true" />
       </section>
 
-      <div className="grid gap-5 md:min-h-0 md:flex-1 md:grid-cols-[290px_1fr]">
+      {/* grid rows default to auto (content-sized) — a long SKILL.md would grow the
+          row past the pinned viewport instead of scrolling inside the card */}
+      <div className="grid gap-5 md:min-h-0 md:flex-1 md:grid-cols-[290px_1fr] md:grid-rows-[minmax(0,1fr)]">
         <div className="flex flex-col gap-2.5 md:min-h-0">
           <input
             className="input"
