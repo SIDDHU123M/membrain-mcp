@@ -12,6 +12,15 @@ export interface Memory {
   via?: ('vec' | 'fts')[];
 }
 
+export interface SavedSummary {
+  id: string;
+  label: string;
+  text: string;
+  count: number;
+  at: string;
+  ids?: number[];
+}
+
 export interface Stats {
   memories: number;
   chunks: number;
@@ -108,7 +117,7 @@ export const api = {
     if (q?.query) p.set('query', q.query);
     if (q?.tag) p.set('tag', q.tag);
     if (q?.archived) p.set('archived', '1');
-    p.set('limit', '100');
+    p.set('limit', '500'); // full shelf — topic filters compare against ids, so partial pages read as missing data
     return req<Memory[]>(`/api/memories?${p}`);
   },
   stale: (days = 90) => req<Memory[]>(`/api/memories/stale?days=${days}`),
@@ -178,13 +187,12 @@ export const api = {
   memory: (id: number) => req<Memory>(`/api/memories/${id}`),
   map: () => req<{ map: MemoryMap | null }>('/api/insights/map'),
   buildMap: () => req<MemoryMap>('/api/insights/map', { method: 'POST', body: '{}' }),
-  summarize: (ids?: number[]) =>
-    req<{ summary: string }>('/api/insights/summary', {
+  summarize: (ids?: number[], label?: string) =>
+    req<{ summary: SavedSummary }>('/api/insights/summary', {
       method: 'POST',
-      body: JSON.stringify({ ids: ids ?? [] }),
+      body: JSON.stringify({ ids: ids ?? [], label }),
     }),
-  lastSummary: () =>
-    req<{ summary: { text: string; count: number; at: string } | null }>('/api/insights/summary'),
+  summaries: () => req<{ summaries: SavedSummary[] }>('/api/insights/summaries'),
   testLlm: () =>
     req<{ ok: boolean; provider: string; model: string }>('/api/llm/test', {
       method: 'POST',

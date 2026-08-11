@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, type MapCategory, type Memory, type MemoryMap, type Proposal } from './api.js';
+import { api, type MapCategory, type Memory, type MemoryMap, type Proposal, type SavedSummary } from './api.js';
 import { relativeTime, sourceColor, sourceLabel } from './util.js';
 import { Markdown } from './markdown.js';
 
@@ -369,8 +369,14 @@ export default function Memories({
   const [category, setCategory] = useState<MapCategory | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [drawer, setDrawer] = useState<Memory | null>(null);
-  const [summary, setSummary] = useState<{ text: string; at: string } | null>(null);
-  const [showSummary, setShowSummary] = useState(false);
+  const [summaries, setSummaries] = useState<SavedSummary[]>([]);
+  const [sumDrawer, setSumDrawer] = useState<{
+    running: boolean;
+    label: string;
+    ids?: number[];
+    view: SavedSummary | null;
+    error?: string;
+  } | null>(null);
   const [aiOp, setAiOp] = useState<AiOp>(null);
   const [aiStatus, setAiStatus] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number; label: string } | null>(
@@ -414,6 +420,14 @@ export default function Memories({
       onJumpConsumed?.();
     }
   }, [jumpMemory, onJumpConsumed]);
+
+  // Esc closes the summary drawer (the memory drawer handles its own)
+  useEffect(() => {
+    if (!sumDrawer) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSumDrawer(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sumDrawer]);
 
   // [[wikilink]] clicked anywhere markdown renders → recall that name
   useEffect(() => {
@@ -489,10 +503,10 @@ export default function Memories({
       .map()
       .then((r) => setMap(r.map))
       .catch(() => {});
-    // the last summary survives restarts — offered collapsed
+    // summaries survive restarts — the drawer lists them
     void api
-      .lastSummary()
-      .then((r) => r.summary && setSummary({ text: r.summary.text, at: r.summary.at }))
+      .summaries()
+      .then((r) => setSummaries(r.summaries))
       .catch(() => {});
   }, [loadProposals]);
 
@@ -664,18 +678,17 @@ export default function Memories({
   };
 
   const runSummary = async (ids?: number[], label?: string) => {
+    const useIds = ids ?? scope.ids;
+    const useLabel = label ?? scope.label;
     setAiOp('summary');
-    setAiStatus(`Summarizing ${label ?? scope.label}…`);
-    setSummary(null);
+    setSumDrawer({ running: true, label: useLabel, ids: useIds, view: null });
     setNotice(null);
     try {
-      const r = await api.summarize(ids ?? scope.ids);
-      setSummary({ text: r.summary, at: new Date().toISOString() });
-      setShowSummary(true);
-      setAiStatus(null);
+      const r = await api.summarize(useIds, useLabel);
+      setSumDrawer({ running: false, label: useLabel, ids: useIds, view: r.summary });
+      setSummaries((s) => [r.summary, ...s.filter((x) => x.id !== r.summary.id)].slice(0, 12));
     } catch (e) {
-      setAiStatus(null);
-      setNotice((e as Error).message);
+      setSumDrawer((d) => (d ? { ...d, running: false, error: (e as Error).message } : d));
     } finally {
       setAiOp(null);
     }
@@ -879,9 +892,21 @@ export default function Memories({
         <div className="py-2.5">
           <div className="flex flex-wrap items-baseline gap-x-3">
             <span className="label shrink-0">The clerk</span>
-            <p className="display min-w-0 break-words text-[13.5px] italic text-[var(--text-2)]" role="status">
+            {aiOp && (
+              <span className="relative flex h-2 w-2 shrink-0 self-center" aria-hidden="true">
+                <span className="absolute h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-60" />
+                <span className="relative h-2 w-2 rounded-full bg-[var(--accent)]" />
+              </span>
+            )}
+            <p
+              className={`display min-w-0 break-words text-[13.5px] italic ${
+                aiOp ? 'font-medium text-[var(--text)]' : 'text-[var(--text-2)]'
+              }`}
+              role="status"
+              aria-live="polite"
+            >
               {aiOp
-                ? aiStatus
+                ? (aiStatus ?? 'The clerk is working…')
                 : (aiStatus ??
                   (map
                     ? `${map.categories.length} topics on file${map.stale ? ' — entries changed since, reorganize' : ''} · ${untitled} untitled`
@@ -913,6 +938,22 @@ export default function Memories({
             <button className="btn" onClick={() => void runSummary()} disabled={aiOp !== null}>
               Summarize {scope.label}
             </button>
+            {summaries.length > 0 && (
+              <button
+                className="btn"
+                onClick={() =>
+                  setSumDrawer({
+                    running: false,
+                    label: summaries[0].label,
+                    ids: summaries[0].ids,
+                    view: summaries[0],
+                  })
+                }
+                title="Every summary the clerk has written — reopen, regenerate, or file one into the ledger"
+              >
+                Summaries · {summaries.length}
+              </button>
+            )}
             <button className="btn" onClick={() => void findDupes()} title="Vector similarity — instant, no LLM">
               Duplicates
             </button>
@@ -937,28 +978,6 @@ export default function Memories({
             )}
           </div>
           {progress && <ProgressBar {...progress} />}
-          {summary && (
-            <div className="basis-full">
-              <div className="card px-4 py-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="label">Summary</span>
-                  <span className="text-[11px] text-[var(--text-3)]">{relativeTime(summary.at)}</span>
-                  <button
-                    className="btn ml-auto px-2 py-0.5 text-[10px]"
-                    onClick={() => setShowSummary((v) => !v)}
-                    aria-expanded={showSummary}
-                  >
-                    {showSummary ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-                {showSummary && (
-                  <div className="mt-2 border-t border-[var(--line)] pt-2">
-                    <Markdown text={summary.text} />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
         <div className="border-b border-[var(--line-strong)]" aria-hidden="true" />
       </section>
@@ -1092,10 +1111,12 @@ export default function Memories({
                   </span>
                   <button
                     className="mono cursor-pointer underline decoration-dotted underline-offset-2"
-                    onClick={() => {
-                      const m = byId.get(e.id);
-                      if (m) setDrawer(m);
-                    }}
+                    onClick={() =>
+                      void api
+                        .memory(e.id)
+                        .then(setDrawer)
+                        .catch(() => setNotice(`Entry #${e.id} is gone (struck).`))
+                    }
                   >
                     #{String(e.id).padStart(3, '0')}
                   </button>
@@ -1369,13 +1390,44 @@ export default function Memories({
           </div>
         )
       ) : visible.length === 0 && !busy ? (
-        <div className="card rise p-12 text-center">
-          <p className="display text-[18px] italic text-[var(--text-2)]">The ledger is empty.</p>
-          <p className="mx-auto mt-2 max-w-md text-[13px] leading-6 text-[var(--text-3)]">
-            Record an entry, drop a PDF/MD/TXT anywhere on this page, or point an agent at{' '}
-            <code className="pill">{location.origin}/mcp</code> and let it remember for you.
-          </p>
-        </div>
+        shelf !== 'live' || writer || tag || category || query ? (
+          // filters hid everything — say so, never look like data loss
+          <div className="card rise p-12 text-center">
+            <p className="display text-[18px] italic text-[var(--text-2)]">Nothing on this shelf.</p>
+            <p className="mx-auto mt-2 max-w-md text-[13px] leading-6 text-[var(--text-3)]">
+              {[
+                shelf !== 'live' && `shelf: ${shelf}`,
+                query && `search: “${query}”`,
+                tag && `tag: ${tag}`,
+                writer && `writer: ${sourceLabel(writer)}`,
+                category && `topic: ${category.name}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}{' '}
+              — no entries match all of that. Your data is untouched.
+            </p>
+            <button
+              className="btn mt-4"
+              onClick={() => {
+                setShelf('live');
+                setWriter(null);
+                setTag(null);
+                setCategory(null);
+                setQuery('');
+              }}
+            >
+              Show everything
+            </button>
+          </div>
+        ) : (
+          <div className="card rise p-12 text-center">
+            <p className="display text-[18px] italic text-[var(--text-2)]">The ledger is empty.</p>
+            <p className="mx-auto mt-2 max-w-md text-[13px] leading-6 text-[var(--text-3)]">
+              Record an entry, drop a PDF/MD/TXT anywhere on this page, or point an agent at{' '}
+              <code className="pill">{location.origin}/mcp</code> and let it remember for you.
+            </p>
+          </div>
+        )
       ) : view === 'cards' ? (
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((m, i) => (
@@ -1477,6 +1529,124 @@ export default function Memories({
           onOpen={(m) => setDrawer(m)}
           onProposed={() => void loadProposals()}
         />
+      )}
+
+      {sumDrawer && (
+        <>
+          <div className="drawer-scrim" onClick={() => setSumDrawer(null)} aria-hidden="true" />
+          <aside className="drawer" role="dialog" aria-modal="true" aria-label="The clerk's summary">
+            <header className="flex items-center gap-3 border-b border-[var(--line)] px-6 py-4">
+              <span className="label">The clerk's summary</span>
+              <span className="chip">{sumDrawer.view?.label ?? sumDrawer.label}</span>
+              <button
+                className="ml-auto cursor-pointer text-[18px] leading-none text-[var(--text-3)] hover:text-[var(--text)]"
+                onClick={() => setSumDrawer(null)}
+                aria-label="Close summary"
+              >
+                ✕
+              </button>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              {sumDrawer.running ? (
+                <div className="flex items-center gap-3 py-6" role="status">
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="absolute h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-60" />
+                    <span className="relative h-2 w-2 rounded-full bg-[var(--accent)]" />
+                  </span>
+                  <p className="display text-[14px] italic text-[var(--text-2)]">
+                    Reading {sumDrawer.ids?.length ?? memories.length} entries — writing the digest of{' '}
+                    {sumDrawer.label}. Local models take a minute.
+                  </p>
+                </div>
+              ) : sumDrawer.error ? (
+                <div className="py-4">
+                  <p className="notice text-[13px]">{sumDrawer.error}</p>
+                  <button
+                    className="btn mt-3"
+                    onClick={() => void runSummary(sumDrawer.ids, sumDrawer.label)}
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : sumDrawer.view ? (
+                <>
+                  <p className="label">
+                    Summary of {sumDrawer.view.label} · {sumDrawer.view.count} entries ·{' '}
+                    {relativeTime(sumDrawer.view.at)}
+                  </p>
+                  <div className="mt-2">
+                    <Markdown text={sumDrawer.view.text} />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-1.5 border-t border-[var(--line)] pt-3.5">
+                    <button
+                      className="btn"
+                      disabled={aiOp !== null}
+                      onClick={() => void runSummary(sumDrawer.view?.ids, sumDrawer.view?.label)}
+                    >
+                      Regenerate
+                    </button>
+                    <button
+                      className="btn"
+                      onClick={() => {
+                        const v = sumDrawer.view!;
+                        void navigator.clipboard
+                          .writeText(`## Summary of ${v.label} (${v.count} entries)\n\n${v.text}\n`)
+                          .then(() => setNotice('Summary copied as markdown.'));
+                      }}
+                    >
+                      Copy markdown
+                    </button>
+                    <button
+                      className="btn"
+                      disabled={busy}
+                      title="File this summary into the ledger as its own entry"
+                      onClick={async () => {
+                        const v = sumDrawer.view!;
+                        setBusy(true);
+                        try {
+                          await api.addMemory(`Summary of ${v.label} (${v.count} entries):\n\n${v.text}`, ['summary']);
+                          setNotice(`Summary of ${v.label} filed into the ledger.`);
+                          await load();
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Save as entry
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
+              {summaries.length > 0 && (
+                <div className="mt-6 border-t border-[var(--line)] pt-4">
+                  <span className="label">Earlier summaries</span>
+                  <div className="rowlist mt-1.5">
+                    {summaries.map((s) => (
+                      <button
+                        key={s.id}
+                        className="flex w-full cursor-pointer items-baseline gap-2.5 py-2 text-left"
+                        onClick={() =>
+                          setSumDrawer({ running: false, label: s.label, ids: s.ids, view: s })
+                        }
+                        aria-current={sumDrawer.view?.id === s.id ? 'true' : undefined}
+                      >
+                        <span className={`text-[13px] ${sumDrawer.view?.id === s.id ? 'font-semibold' : ''}`}>
+                          {s.label}
+                        </span>
+                        <span className="leader-dots" aria-hidden="true" />
+                        <span className="mono shrink-0 text-[10.5px] text-[var(--text-3)]">
+                          {s.count} entries · {relativeTime(s.at)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+        </>
       )}
 
       {ctxMenu && (

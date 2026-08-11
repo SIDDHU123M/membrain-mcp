@@ -423,15 +423,36 @@ export interface SavedSummary {
   text: string;
   count: number;
   at: string;
+  id: string;
+  label: string;
+  ids?: number[];
 }
 
-export function getLastSummary(db: DB): SavedSummary | null {
-  const raw = getSetting(db, 'last_summary');
-  return raw ? (JSON.parse(raw) as SavedSummary) : null;
+/** Every summary the clerk has written, newest first (settings `summaries`, capped). */
+export function listSummaries(db: DB): SavedSummary[] {
+  const raw = getSetting(db, 'summaries');
+  if (raw) return JSON.parse(raw) as SavedSummary[];
+  // fold in the pre-history single-summary format once
+  const legacy = getSetting(db, 'last_summary');
+  if (legacy) {
+    const old = JSON.parse(legacy) as { text: string; count: number; at: string };
+    const migrated: SavedSummary[] = [
+      { id: crypto.randomUUID(), label: 'all entries', ids: undefined, ...old },
+    ];
+    setSetting(db, 'summaries', JSON.stringify(migrated));
+    return migrated;
+  }
+  return [];
 }
 
-/** Summarize the whole store, or just the given memory ids. */
-export async function summarizeMemories(db: DB, ids?: number[]): Promise<string> {
+const SUMMARY_KEEP = 12;
+
+/** Summarize the whole store or the given ids; the result is filed under `label` in history. */
+export async function summarizeMemories(
+  db: DB,
+  ids?: number[],
+  label = 'all entries',
+): Promise<SavedSummary> {
   const cfg = await ollamaConfig(db);
   if (!cfg) throw new OllamaError('No AI available — start Ollama or configure a cloud provider in Settings');
   const rows = (
@@ -453,6 +474,15 @@ export async function summarizeMemories(db: DB, ids?: number[]): Promise<string>
       rows.map((r) => `- ${r.content.replace(/\s+/g, ' ').slice(0, 300)}`).join('\n'),
     { timeoutMs: 300_000 },
   );
-  setSetting(db, 'last_summary', JSON.stringify({ text, count: rows.length, at: new Date().toISOString() }));
-  return text;
+  const summary: SavedSummary = {
+    id: crypto.randomUUID(),
+    label,
+    ids: ids && ids.length > 0 ? ids : undefined,
+    text,
+    count: rows.length,
+    at: new Date().toISOString(),
+  };
+  const all = [summary, ...listSummaries(db)].slice(0, SUMMARY_KEEP);
+  setSetting(db, 'summaries', JSON.stringify(all));
+  return summary;
 }

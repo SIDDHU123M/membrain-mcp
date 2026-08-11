@@ -38,7 +38,7 @@ import {
   buildMindMap,
   getCachedMap,
   getCachedMindMap,
-  getLastSummary,
+  listSummaries,
   getProposals,
   proposeTitles,
   resolveProposals,
@@ -305,14 +305,18 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     return resolveProposals(db, embedder, ids, accept === true);
   });
 
-  app.get('/api/insights/summary', async () => ({ summary: getLastSummary(db) }));
+  app.get('/api/insights/summaries', async () => ({ summaries: listSummaries(db) }));
 
-  app.post<{ Body: { ids?: number[] } }>('/api/insights/summary', async (req) => {
+  app.post<{ Body: { ids?: number[]; label?: string } }>('/api/insights/summary', async (req) => {
     const ids = req.body?.ids;
     if (ids !== undefined && (!Array.isArray(ids) || ids.some((i) => typeof i !== 'number'))) {
       throw new ValidationError('ids must be an array of numbers');
     }
-    return { summary: await summarizeMemories(db, ids && ids.length > 0 ? ids : undefined) };
+    const label =
+      typeof req.body?.label === 'string' && req.body.label.trim()
+        ? req.body.label.trim().slice(0, 60)
+        : 'all entries';
+    return { summary: await summarizeMemories(db, ids && ids.length > 0 ? ids : undefined, label) };
   });
 
   // quick "does the configured brain answer" probe for the Settings tab
