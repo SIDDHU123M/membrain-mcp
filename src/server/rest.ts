@@ -41,7 +41,7 @@ import {
   resolveProposals,
   summarizeMemories,
 } from '../core/insights.js';
-import { OllamaError } from '../core/ollama.js';
+import { OllamaError, llmConfig, ollamaGenerate } from '../core/ollama.js';
 
 export interface Ctx {
   db: DB;
@@ -274,6 +274,21 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
       throw new ValidationError('ids must be an array of numbers');
     }
     return { summary: await summarizeMemories(db, ids && ids.length > 0 ? ids : undefined) };
+  });
+
+  // quick "does the configured brain answer" probe for the Settings tab
+  app.post('/api/llm/test', async () => {
+    const cfg = await llmConfig(db);
+    if (!cfg) {
+      throw new OllamaError(
+        'No AI configured — start Ollama, or set a provider, API key, and model in Settings',
+      );
+    }
+    const out = await ollamaGenerate(cfg, 'Reply with the single word: ok', {
+      timeoutMs: 30_000,
+      numCtx: 2048,
+    });
+    return { ok: true, provider: cfg.kind, model: cfg.model, reply: out.slice(0, 40) };
   });
 
   // ---- settings (allowlisted keys only) ----

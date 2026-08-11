@@ -56,7 +56,7 @@ export async function buildMemoryMap(
 ): Promise<MemoryMap> {
   if (mapBuilding) throw new OllamaError('a map build is already running');
   const cfg = await ollamaConfig(db);
-  if (!cfg) throw new OllamaError('Ollama is not reachable — start it or check Settings');
+  if (!cfg) throw new OllamaError('No AI available — start Ollama or configure a cloud provider in Settings');
   const rows = db
     .prepare('SELECT id, content FROM memories ORDER BY id DESC LIMIT ?')
     .all(MAP_CAP) as { id: number; content: string }[];
@@ -216,7 +216,7 @@ export async function proposeTitles(
   memoryIds?: number[],
 ): Promise<number> {
   const cfg = await ollamaConfig(db);
-  if (!cfg) throw new OllamaError('Ollama is not reachable — start it or check Settings');
+  if (!cfg) throw new OllamaError('No AI available — start Ollama or configure a cloud provider in Settings');
   const pending = new Set(
     getProposals(db)
       .filter((p) => p.kind === 'title')
@@ -310,7 +310,7 @@ const KINDS: NodeKind[] = ['person', 'project', 'tool', 'preference', 'topic', '
 /** Ask the local LLM to extract a knowledge graph from the store; cache like the topic map. */
 export async function buildMindMap(db: DB): Promise<MindMap> {
   const cfg = await ollamaConfig(db);
-  if (!cfg) throw new OllamaError('Ollama is not reachable — start it or check Settings');
+  if (!cfg) throw new OllamaError('No AI available — start Ollama or configure a cloud provider in Settings');
   const rows = db
     .prepare('SELECT id, content FROM memories ORDER BY id DESC LIMIT ?')
     .all(MAP_CAP) as { id: number; content: string }[];
@@ -374,7 +374,7 @@ export async function buildMindMap(db: DB): Promise<MindMap> {
 /** Summarize the whole store, or just the given memory ids. */
 export async function summarizeMemories(db: DB, ids?: number[]): Promise<string> {
   const cfg = await ollamaConfig(db);
-  if (!cfg) throw new OllamaError('Ollama is not reachable — start it or check Settings');
+  if (!cfg) throw new OllamaError('No AI available — start Ollama or configure a cloud provider in Settings');
   const rows = (
     ids && ids.length > 0
       ? db

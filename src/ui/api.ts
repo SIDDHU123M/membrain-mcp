@@ -176,6 +176,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ ids: ids ?? [] }),
     }),
+  testLlm: () =>
+    req<{ ok: boolean; provider: string; model: string }>('/api/llm/test', {
+      method: 'POST',
+      body: '{}',
+    }),
   settings: () => req<Record<string, string | null>>('/api/settings'),
   saveSettings: (patch: Record<string, string>) =>
     req<Record<string, string | null>>('/api/settings', {

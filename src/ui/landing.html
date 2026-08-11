@@ -11,16 +11,18 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>" />
     <script type="module" src="/landing.ts"></script>
     <style>
-      /* ————— the night ledger, printed. Canvas = the logo's black. ————— */
+      /* ————— the ledger in daylight: paper and ink, logo framed as a printed plate. ————— */
       :root {
-        --bg: #0a0a0a;
-        --sheet: #111110;
-        --cream: #efe8d8;
-        --cream-2: #b3ac9c;
-        --cream-3: #7c7669;
-        --hairline: rgba(239, 232, 216, 0.14);
-        --hairline-strong: rgba(239, 232, 216, 0.3);
-        --glow: rgba(239, 232, 216, 0.06);
+        --bg: #f4f1e8;
+        --sheet: #fdfcf7;
+        --plate: #0a0a0a;
+        --cream: #1c1917;
+        --cream-2: #57534e;
+        --cream-3: #99948a;
+        --hairline: rgba(28, 25, 20, 0.14);
+        --hairline-strong: rgba(28, 25, 20, 0.32);
+        --glow: rgba(28, 25, 20, 0.05);
+        --navy: #1e3a8a;
         --serif: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
         --sans: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
         --mono: 'Cascadia Code', ui-monospace, Consolas, monospace;
@@ -37,8 +39,8 @@
       }
       body::before {
         content: '';
-        position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.5;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.02 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+        position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.4;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.024 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
       }
       main, header, footer { position: relative; z-index: 1; }
       .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
@@ -55,23 +57,29 @@
         display: inline-flex; align-items: center; gap: 8px;
         padding: 11px 22px; border-radius: 3px; text-decoration: none;
         font-size: 12.5px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase;
-        border: 1px solid var(--hairline-strong); color: var(--cream);
+        border: 1px solid var(--hairline-strong); color: var(--cream-2);
         transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
       }
-      .btn:hover { background: var(--glow); border-color: var(--cream-2); }
-      .btn-solid { background: var(--cream); color: #0a0a0a; border-color: var(--cream); }
-      .btn-solid:hover { background: #fff8e8; }
+      .btn:hover { background: var(--glow); border-color: var(--cream); color: var(--cream); }
+      .btn-solid { background: var(--navy); color: #f4f1e8; border-color: var(--navy); }
+      .btn-solid:hover { background: #274a9e; border-color: #274a9e; }
 
       code.pill {
         font-family: var(--mono); font-size: 13px;
-        background: var(--sheet); border: 1px solid var(--hairline);
+        background: rgba(28, 25, 20, 0.05); border: 1px solid var(--hairline);
         border-radius: 3px; padding: 3px 8px; color: var(--cream-2);
+      }
+
+      /* the logo is a black print — frame it as a plate so it sits on paper deliberately */
+      .plate {
+        background: var(--plate); border-radius: 6px; overflow: hidden;
+        box-shadow: 0 2px 6px rgba(28, 25, 20, 0.18), 0 18px 44px -20px rgba(28, 25, 20, 0.35);
       }
 
       /* nav */
       nav { display: flex; align-items: center; gap: 20px; padding: 26px 0; }
       nav .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-      nav .brand img { height: 40px; width: 40px; object-fit: cover; }
+      nav .brand img { height: 40px; width: 40px; object-fit: cover; border-radius: 5px; box-shadow: 0 1px 4px rgba(28,25,20,0.25); }
       nav .brand b { font-family: var(--serif); font-size: 20px; font-weight: 600; }
       nav .links { margin-left: auto; display: flex; gap: 26px; align-items: center; }
       nav .links a { text-decoration: none; font-size: 13.5px; color: var(--cream-2); }
@@ -86,13 +94,13 @@
       .hero .sub { margin-top: 22px; font-size: 17.5px; color: var(--cream-2); max-width: 34em; }
       .hero .cta { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
       .hero .art { justify-self: center; }
-      .hero .art img { width: min(380px, 80vw); height: auto; display: block; filter: drop-shadow(0 0 60px rgba(239,232,216,0.08)); }
+      .hero .art img { width: min(380px, 80vw); height: auto; display: block; }
       .hero .npx {
-        font-family: var(--mono); font-size: 14px; color: var(--cream);
-        background: var(--sheet); border: 1px solid var(--hairline);
+        font-family: var(--mono); font-size: 14px; color: #efe8d8;
+        background: var(--plate); border: 1px solid var(--plate);
         border-radius: 3px; padding: 11px 18px;
       }
-      .hero .npx b { color: var(--cream-3); font-weight: 400; user-select: none; }
+      .hero .npx b { color: #7c7669; font-weight: 400; user-select: none; }
 
       /* trust strip */
       .strip { border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
@@ -126,9 +134,9 @@
       .step h3 { font-size: 17px; margin: 8px 0 8px; }
       .step p { font-size: 13.5px; color: var(--cream-2); }
       .step pre {
-        margin-top: 14px; background: #070707; border: 1px solid var(--hairline);
+        margin-top: 14px; background: var(--plate); border: 1px solid var(--plate);
         border-radius: 3px; padding: 12px 14px; overflow-x: auto;
-        font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--cream-2);
+        font-family: var(--mono); font-size: 12px; line-height: 1.6; color: #cfc8b8;
       }
 
       /* tools table */
@@ -148,7 +156,7 @@
       /* security */
       .warning { background: var(--sheet); border: 1px solid var(--hairline-strong); border-radius: 4px; padding: 26px; margin-top: 8px; }
       .warning .stamp {
-        display: inline-block; border: 1.5px solid var(--cream); border-radius: 2px;
+        display: inline-block; border: 1.5px solid #b91c1c; color: #b91c1c; border-radius: 2px;
         padding: 2px 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
         text-transform: uppercase; transform: rotate(-1.2deg); margin-bottom: 14px;
       }
@@ -158,7 +166,8 @@
       /* footer */
       .final { text-align: center; padding: 90px 0 40px; }
       .final h2 { font-size: clamp(30px, 4.4vw, 46px); font-weight: 560; }
-      .final .cta { margin-top: 28px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+      .final .cta { margin-top: 28px; display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; }
+      .final .npx { display: inline-flex; align-items: center; }
       footer { border-top: 1px solid var(--hairline); margin-top: 60px; }
       footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 32px; padding: 26px 24px 40px; align-items: center; }
       footer span { font-size: 12.5px; color: var(--cream-3); }
@@ -191,7 +200,7 @@
         <div class="hero">
           <div>
             <div class="label rise">Self-hosted · Local-first · MCP</div>
-            <h1 class="rise d1" style="margin-top: 18px">One memory,<br /><em>every</em> AI.</h1>
+            <h1 class="rise d1" style="margin-top: 18px; color: var(--cream)">One memory,<br /><em>every</em> AI.</h1>
             <p class="sub rise d2">
               Membrain is a memory ledger you run on your own machine. You write to it from a web
               UI; your agents — Claude, Cursor, anything that speaks MCP — read and write the same
@@ -202,7 +211,7 @@
               <a class="btn" href="#how">Connect your agents</a>
             </div>
           </div>
-          <div class="art rise d2">
+          <div class="art rise d2 plate">
             <img src="./assets/membrain-logo.png" alt="Membrain — half brain, half database" />
           </div>
         </div>

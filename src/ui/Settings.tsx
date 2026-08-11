@@ -8,6 +8,7 @@ function Field({
   placeholder,
   onChange,
   mono,
+  secret,
 }: {
   label: string;
   hint?: string;
@@ -15,12 +16,14 @@ function Field({
   placeholder?: string;
   onChange: (v: string) => void;
   mono?: boolean;
+  secret?: boolean;
 }) {
   return (
     <div>
       <label className="label mb-1.5">{label}</label>
       <input
         className={`input ${mono ? 'mono text-[12.5px]' : ''}`}
+        type={secret ? 'password' : 'text'}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
@@ -28,6 +31,33 @@ function Field({
       {hint && <p className="mt-1 text-[11px] leading-4 text-[var(--text-3)]">{hint}</p>}
     </div>
   );
+}
+
+/* Cloud presets — all but Anthropic speak the OpenAI chat-completions shape. */
+const PRESETS: Record<string, { provider: string; url: string; modelHint: string }> = {
+  ollama: { provider: 'ollama', url: '', modelHint: '' },
+  openai: { provider: 'openai', url: 'https://api.openai.com/v1', modelHint: 'gpt-4o-mini' },
+  anthropic: { provider: 'anthropic', url: 'https://api.anthropic.com', modelHint: 'claude-sonnet-5' },
+  openrouter: {
+    provider: 'openai',
+    url: 'https://openrouter.ai/api/v1',
+    modelHint: 'qwen/qwen3-30b-a3b',
+  },
+  nvidia: {
+    provider: 'openai',
+    url: 'https://integrate.api.nvidia.com/v1',
+    modelHint: 'qwen/qwen3-8b',
+  },
+  custom: { provider: 'openai', url: '', modelHint: 'model id at your endpoint' },
+};
+
+function presetOf(provider: string, url: string): string {
+  if (!provider || provider === 'ollama') return 'ollama';
+  if (provider === 'anthropic') return 'anthropic';
+  for (const [k, p] of Object.entries(PRESETS)) {
+    if (k !== 'custom' && p.provider === provider && p.url === url) return k;
+  }
+  return 'custom';
 }
 
 export default function Settings() {
@@ -81,32 +111,97 @@ export default function Settings() {
     }
   };
 
+  const [llmTest, setLlmTest] = useState<string | null>(null);
+  const testBrain = async () => {
+    setBusy(true);
+    setLlmTest('Testing…');
+    try {
+      const r = await api.testLlm();
+      setLlmTest(`✓ ${r.provider} answered with ${r.model}`);
+    } catch (e) {
+      setLlmTest(`✕ ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const provider = values.embedding_provider || 'local';
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-3.5">
       <section className="card space-y-3.5 p-4 sm:p-5">
         <div>
-          <span className="label">Sec. 01 — Import LLM</span>
+          <span className="label">Sec. 01 — The clerk's brain</span>
           <p className="display mt-1 text-[13px] italic leading-5 text-[var(--text-2)]">
-            Documents you import are distilled into individual memories by a local Ollama. If it's
-            unreachable, the raw text is saved instead — import always works.
+            The AI behind organizing, titles, summaries, and import distillation. Local Ollama by
+            default; no local GPU? Point it at a cloud provider — just paste an API key.
           </p>
         </div>
-        <Field
-          label="Ollama URL"
-          value={values.ollama_url ?? ''}
-          placeholder="http://127.0.0.1:11434"
-          onChange={(v) => set('ollama_url', v)}
-          mono
-        />
-        <Field
-          label="Ollama model"
-          value={values.ollama_model ?? ''}
-          placeholder="first installed model"
-          onChange={(v) => set('ollama_model', v)}
-          mono
-        />
+        <div>
+          <label className="label mb-1.5">Provider</label>
+          <select
+            className="input"
+            value={presetOf(values.llm_provider ?? 'ollama', values.llm_api_url ?? '')}
+            onChange={(e) => {
+              const p = PRESETS[e.target.value];
+              set('llm_provider', p.provider);
+              set('llm_api_url', p.url);
+            }}
+          >
+            <option value="ollama">Local Ollama — private, offline (default)</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic — Claude</option>
+            <option value="openrouter">OpenRouter — hundreds of models, one key</option>
+            <option value="nvidia">NVIDIA NIM</option>
+            <option value="custom">Custom — any OpenAI-compatible endpoint</option>
+          </select>
+        </div>
+        {(values.llm_provider ?? 'ollama') === 'ollama' ? (
+          <>
+            <Field
+              label="Ollama URL"
+              value={values.ollama_url ?? ''}
+              placeholder="http://127.0.0.1:11434"
+              onChange={(v) => set('ollama_url', v)}
+              mono
+            />
+            <Field
+              label="Ollama model"
+              value={values.ollama_model ?? ''}
+              placeholder="first installed model"
+              onChange={(v) => set('ollama_model', v)}
+              mono
+            />
+          </>
+        ) : (
+          <>
+            <Field
+              label="Base URL"
+              value={values.llm_api_url ?? ''}
+              placeholder="https://api.example.com/v1"
+              onChange={(v) => set('llm_api_url', v)}
+              mono
+            />
+            <Field
+              label="API key"
+              hint="Stored in plain text in memory.db — same trust boundary as everything else. Sent only to the base URL above."
+              value={values.llm_api_key ?? ''}
+              onChange={(v) => set('llm_api_key', v)}
+              mono
+              secret
+            />
+            <Field
+              label="Model"
+              value={values.llm_model ?? ''}
+              placeholder={
+                PRESETS[presetOf(values.llm_provider ?? 'ollama', values.llm_api_url ?? '')]
+                  ?.modelHint ?? 'model id'
+              }
+              onChange={(v) => set('llm_model', v)}
+              mono
+            />
+          </>
+        )}
         <div>
           <label className="label mb-1.5">Use LLM on import</label>
           <select
@@ -117,6 +212,19 @@ export default function Settings() {
             <option value="on">On — distill documents into key points</option>
             <option value="off">Off — always import raw text</option>
           </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            className="btn"
+            disabled={busy || Object.keys(dirty).length > 0}
+            title={
+              Object.keys(dirty).length > 0 ? 'Save settings first, then test' : 'Send a tiny prompt to the configured brain'
+            }
+            onClick={() => void testBrain()}
+          >
+            Test connection
+          </button>
+          {llmTest && <span className="text-[12px] notice">{llmTest}</span>}
         </div>
       </section>
 

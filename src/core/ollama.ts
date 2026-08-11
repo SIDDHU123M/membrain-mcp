@@ -1,36 +1,72 @@
 import { type DB, getSetting } from './db.js';
 
+/** Any LLM-backend failure (local or cloud) — REST maps this to 503. */
 export class OllamaError extends Error {}
 
-export interface OllamaConfig {
+export type LlmKind = 'ollama' | 'openai' | 'anthropic';
+
+export interface LlmConfig {
+  kind: LlmKind;
   url: string;
   model: string;
+  apiKey?: string;
 }
 
-/** Resolve Ollama endpoint + model; auto-pick the first installed model when unset. Null = unreachable/none. */
-export async function ollamaConfig(db: DB): Promise<OllamaConfig | null> {
-  const url = getSetting(db, 'ollama_url') ?? 'http://127.0.0.1:11434';
-  try {
-    const res = await fetch(new URL('/api/tags', url), { signal: AbortSignal.timeout(2000) });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { models?: { name: string }[] };
-    const model = getSetting(db, 'ollama_model') ?? json.models?.[0]?.name;
-    return model ? { url, model } : null;
-  } catch {
-    return null;
+// kept for callers that specifically need the local instance (legacy name)
+export interface OllamaConfig extends LlmConfig {}
+
+const DEFAULT_URLS: Record<Exclude<LlmKind, 'ollama'>, string> = {
+  openai: 'https://api.openai.com/v1',
+  anthropic: 'https://api.anthropic.com',
+};
+
+/**
+ * Resolve the clerk's brain from settings. Default: local Ollama (auto-picks
+ * the first installed model). Cloud alternatives for machines without a local
+ * model: settings llm_provider = 'openai' (any OpenAI-compatible endpoint —
+ * OpenAI, OpenRouter, NVIDIA NIM, Groq, custom) or 'anthropic', plus
+ * llm_api_url / llm_api_key / llm_model. Null = nothing usable.
+ */
+export async function llmConfig(db: DB): Promise<LlmConfig | null> {
+  const provider = (getSetting(db, 'llm_provider') ?? 'ollama') as LlmKind;
+  if (provider === 'ollama') {
+    const url = getSetting(db, 'ollama_url') ?? 'http://127.0.0.1:11434';
+    try {
+      const res = await fetch(new URL('/api/tags', url), { signal: AbortSignal.timeout(2000) });
+      if (!res.ok) return null;
+      const json = (await res.json()) as { models?: { name: string }[] };
+      const model = getSetting(db, 'ollama_model') ?? json.models?.[0]?.name;
+      return model ? { kind: 'ollama', url, model } : null;
+    } catch {
+      return null;
+    }
   }
+  const url = getSetting(db, 'llm_api_url')?.trim() || DEFAULT_URLS[provider];
+  const apiKey = getSetting(db, 'llm_api_key');
+  const model = getSetting(db, 'llm_model');
+  if (!apiKey || !model) return null;
+  return { kind: provider, url, model, apiKey };
 }
 
-/** Thinking models (qwen3 etc.) may emit <think>…</think> before the answer — drop it. */
+/** Back-compat alias — some callers only care about the local instance. */
+export const ollamaConfig = llmConfig;
+
+/** Thinking models may emit <think>…</think>; cloud models may fence JSON — strip both. */
 export function stripThink(text: string): string {
-  return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
+    .trim();
 }
 
-export async function ollamaGenerate(
-  cfg: OllamaConfig,
-  prompt: string,
-  opts: { json?: boolean; timeoutMs?: number; numCtx?: number } = {},
-): Promise<string> {
+export interface GenOpts {
+  json?: boolean;
+  timeoutMs?: number;
+  numCtx?: number;
+}
+
+async function ollamaGen(cfg: LlmConfig, prompt: string, opts: GenOpts): Promise<string> {
   const res = await fetch(new URL('/api/generate', cfg.url), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -51,4 +87,70 @@ export async function ollamaGenerate(
   if (!res.ok) throw new OllamaError(`ollama ${res.status}: ${await res.text()}`);
   const json = (await res.json()) as { response: string };
   return stripThink(json.response);
+}
+
+async function openaiGen(cfg: LlmConfig, prompt: string, opts: GenOpts): Promise<string> {
+  const base = cfg.url.endsWith('/') ? cfg.url : cfg.url + '/';
+  const res = await fetch(new URL('chat/completions', base), {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${cfg.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: cfg.model,
+      messages: [{ role: 'user', content: prompt }],
+      ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
+    }),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 180_000),
+  });
+  if (!res.ok) throw new OllamaError(`${new URL(base).host} ${res.status}: ${await res.text()}`);
+  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const text = json.choices?.[0]?.message?.content;
+  if (typeof text !== 'string') throw new OllamaError('provider returned no content');
+  return stripThink(text);
+}
+
+async function anthropicGen(cfg: LlmConfig, prompt: string, opts: GenOpts): Promise<string> {
+  const base = cfg.url.replace(/\/+$/, '');
+  const res = await fetch(`${base}/v1/messages`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': cfg.apiKey ?? '',
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: cfg.model,
+      max_tokens: 8192,
+      messages: [
+        {
+          role: 'user',
+          content: opts.json ? prompt + '\nRespond with ONLY the JSON, no prose.' : prompt,
+        },
+      ],
+    }),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 180_000),
+  });
+  if (!res.ok) throw new OllamaError(`anthropic ${res.status}: ${await res.text()}`);
+  const json = (await res.json()) as { content?: { type: string; text?: string }[] };
+  const text = json.content?.find((c) => c.type === 'text')?.text;
+  if (typeof text !== 'string') throw new OllamaError('provider returned no content');
+  return stripThink(text);
+}
+
+/** Generate with whatever brain is configured. Callers resolve cfg once per operation. */
+export async function ollamaGenerate(
+  cfg: LlmConfig,
+  prompt: string,
+  opts: GenOpts = {},
+): Promise<string> {
+  try {
+    if (cfg.kind === 'openai') return await openaiGen(cfg, prompt, opts);
+    if (cfg.kind === 'anthropic') return await anthropicGen(cfg, prompt, opts);
+    return await ollamaGen(cfg, prompt, opts);
+  } catch (err) {
+    if (err instanceof OllamaError) throw err;
+    throw new OllamaError(`${cfg.kind} request failed: ${(err as Error).message}`);
+  }
 }

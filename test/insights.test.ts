@@ -59,6 +59,14 @@ describe('insights', () => {
     expect(getCachedMap(db)?.stale).toBe(true);
   });
 
+  it('cloud provider without key/model → OllamaError, no network attempted', async () => {
+    await saveMemory(db, embedder, { content: 'fact', source: 'ui' });
+    setSetting(db, 'llm_provider', 'openai');
+    await expect(proposeTitles(db)).rejects.toThrow(OllamaError);
+    setSetting(db, 'llm_provider', 'anthropic');
+    await expect(summarizeMemories(db)).rejects.toThrow(OllamaError);
+  });
+
   it('all LLM ops fail with OllamaError when ollama is unreachable', async () => {
     await saveMemory(db, embedder, { content: 'fact', source: 'ui' });
     await expect(buildMemoryMap(db)).rejects.toThrow(OllamaError);

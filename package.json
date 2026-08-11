@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Self-hosted, single-user AI memory server. One SQLite file, web UI + REST + MCP.",
   "type": "module",
+  "license": "MIT",
   "bin": {
     "membrain": "dist/server/index.js"
   },
@@ -17,7 +18,8 @@
     "build": "tsc -p tsconfig.build.json && vite build",
     "start": "node dist/server/index.js",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run test && npm run build"
   },
   "dependencies": {
     "@fastify/multipart": "^9.0.0",

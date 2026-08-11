@@ -76,6 +76,10 @@ export function setSetting(db: DB, key: string, value: string): void {
 export const EDITABLE_SETTINGS = [
   'ollama_url',
   'ollama_model',
+  'llm_provider',
+  'llm_api_url',
+  'llm_api_key',
+  'llm_model',
   'import_llm',
   'embedding_provider',
   'embedding_api_url',
