@@ -94,8 +94,8 @@ export default function Skills() {
   };
 
   return (
-    <div className="space-y-5">
-      <section className="rise">
+    <div className="flex flex-col gap-5 md:h-[calc(100vh-7.5rem)]">
+      <section className="rise shrink-0">
         <div className="rule-double" aria-hidden="true" />
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2.5">
           <span className="label">Instruction manual</span>
@@ -106,8 +106,8 @@ export default function Skills() {
         <div className="border-b border-[var(--line-strong)]" aria-hidden="true" />
       </section>
 
-      <div className="grid gap-5 md:grid-cols-[290px_1fr]">
-        <div className="space-y-2.5">
+      <div className="grid gap-5 md:min-h-0 md:flex-1 md:grid-cols-[290px_1fr]">
+        <div className="flex flex-col gap-2.5 md:min-h-0">
           <input
             className="input"
             placeholder="Filter skills…"
@@ -143,7 +143,7 @@ export default function Skills() {
             </button>
           </div>
 
-          <div className="card max-h-[68vh] overflow-y-auto">
+          <div className="card max-h-[60vh] overflow-y-auto md:max-h-none md:min-h-0 md:flex-1">
             {visible.length === 0 && (
               <div className="p-4 text-[13px] text-[var(--text-3)]">
                 {skills.length === 0 ? 'No skills found in configured roots.' : 'No skills match the filter.'}
@@ -178,7 +178,7 @@ export default function Skills() {
         </div>
 
         {open ? (
-          <div className="card flex min-h-[68vh] flex-col">
+          <div className="card flex min-h-[68vh] flex-col md:min-h-0 md:h-full">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--line)] px-4 py-3">
               <h2 className="display text-[16px] font-semibold">{open.name}</h2>
               <span className="mono truncate text-[10.5px] text-[var(--text-3)]" title={path}>
@@ -226,7 +226,7 @@ export default function Skills() {
             )}
           </div>
         ) : (
-          <div className="card flex min-h-[68vh] items-center justify-center p-10">
+          <div className="card flex min-h-[68vh] items-center justify-center p-10 md:min-h-0 md:h-full">
             <p className="display text-[14px] italic text-[var(--text-3)]">
               Select a skill from the index to read or edit its SKILL.md
             </p>
