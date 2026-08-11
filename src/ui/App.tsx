@@ -116,7 +116,9 @@ export default function App() {
           />
           <div>
             <h1 className="display text-[24px] font-semibold leading-none">Membrain</h1>
-            <p className="label mt-1.5">The memory ledger</p>
+            <p className="label mt-1.5">
+              The memory ledger{stats?.version ? ` · v${stats.version}` : ''}
+            </p>
           </div>
         </div>
 
@@ -141,6 +143,7 @@ export default function App() {
         <div className="mt-8 hidden md:block">
           <div className="rule-double mb-3" aria-hidden="true" />
           {stats && (
+            <>
             <dl className="space-y-1.5 text-[12px] text-[var(--text-2)]">
               <div className="leader">
                 <dt>Entries</dt>
@@ -175,6 +178,7 @@ export default function App() {
                 <code className="mono">npm i -g membrain-mcp@{stats.latest}</code>, restart, refresh.
               </p>
             )}
+            </>
           )}
           <button
             className="btn mt-4 w-full"

@@ -179,6 +179,29 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     latest: await checkLatestVersion(db),
   }));
 
+  // the version catalogue: published releases from the registry (cached 6h,
+  // same privacy contract as the update check — package name only)
+  let versionsCache: { value: { version: string; at: string }[]; at: number } = { value: [], at: 0 };
+  app.get('/api/versions', async () => {
+    if (getSetting(db, 'update_check') === 'off') return { versions: [], checksOff: true };
+    if (Date.now() - versionsCache.at < 6 * 3600_000) return { versions: versionsCache.value };
+    try {
+      const res = await fetch('https://registry.npmjs.org/membrain-mcp', {
+        signal: AbortSignal.timeout(4000),
+      });
+      const j = (await res.json()) as { time?: Record<string, string> };
+      const versions = Object.entries(j.time ?? {})
+        .filter(([k]) => /^\d+\.\d+\.\d+$/.test(k))
+        .map(([version, at]) => ({ version, at }))
+        .sort((a, b) => b.at.localeCompare(a.at))
+        .slice(0, 30);
+      versionsCache = { value: versions, at: Date.now() };
+    } catch {
+      versionsCache = { value: versionsCache.value, at: Date.now() };
+    }
+    return { versions: versionsCache.value };
+  });
+
   // ---- skills management (files on disk, not memory DB) ----
 
   app.get('/api/skills', async () => listSkills(db));

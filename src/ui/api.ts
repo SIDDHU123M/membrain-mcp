@@ -197,6 +197,8 @@ export const api = {
     }),
   summaries: () => req<{ summaries: SavedSummary[] }>('/api/insights/summaries'),
   llmInfo: () => req<{ llm: { provider: string; model: string } | null }>('/api/llm/info'),
+  versions: () =>
+    req<{ versions: { version: string; at: string }[]; checksOff?: boolean }>('/api/versions'),
   testLlm: () =>
     req<{ ok: boolean; provider: string; model: string }>('/api/llm/test', {
       method: 'POST',

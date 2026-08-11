@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from './api.js';
+import { relativeTime } from './util.js';
 import { Markdown } from './markdown.js';
 import connectAgentsMd from './content/connect-agents.md?raw';
 import skillMd from '../../skills/membrain/SKILL.md?raw';
@@ -108,11 +110,29 @@ locations: \`~/.claude/skills/membrain/SKILL.md\` for Claude Code, \`~/.agents/s
 for other agents.
 `;
 
-const SECTIONS = ['Quickstart', 'Connect agents', 'MCP usage', 'The skill'] as const;
+const SECTIONS = ['Quickstart', 'Connect agents', 'MCP usage', 'The skill', 'Versions'] as const;
 type Section = (typeof SECTIONS)[number];
 
 export default function Docs() {
   const [section, setSection] = useState<Section>('Quickstart');
+  const [versions, setVersions] = useState<{ version: string; at: string }[]>([]);
+  const [checksOff, setChecksOff] = useState(false);
+  const [running, setRunning] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (section !== 'Versions') return;
+    void api
+      .versions()
+      .then((r) => {
+        setVersions(r.versions);
+        setChecksOff(r.checksOff ?? false);
+      })
+      .catch(() => {});
+    void api
+      .stats()
+      .then((st) => setRunning(st.version ?? null))
+      .catch(() => {});
+  }, [section]);
 
   const downloadSkill = () => {
     const a = document.createElement('a');
@@ -154,6 +174,38 @@ export default function Docs() {
         {section === 'Quickstart' && <Markdown text={QUICKSTART} />}
         {section === 'Connect agents' && <Markdown text={connectAgentsMd} />}
         {section === 'MCP usage' && <Markdown text={TOOLS} />}
+        {section === 'Versions' && (
+          <>
+            <span className="label">Version catalogue</span>
+            <p className="mt-1 text-[13px] leading-6 text-[var(--text-2)]">
+              Every published release, newest first.
+              {running ? ` You are running v${running}.` : ''}
+            </p>
+            {checksOff ? (
+              <p className="mt-3 text-[12.5px] text-[var(--text-3)]">
+                Update checks are off in Settings, so the ledger never asks the registry. Turn
+                them on to see the catalogue, or browse npmjs.com/package/membrain-mcp.
+              </p>
+            ) : versions.length === 0 ? (
+              <p className="mt-3 text-[12.5px] text-[var(--text-3)]">
+                Could not reach the registry (offline is a feature) — try again later.
+              </p>
+            ) : (
+              <div className="rowlist mt-3">
+                {versions.map((v) => (
+                  <div key={v.version} className="flex items-baseline gap-2.5 py-2">
+                    <span className="mono text-[13px]">v{v.version}</span>
+                    {v.version === running && <span className="chip">running</span>}
+                    <span className="leader-dots" aria-hidden="true" />
+                    <span className="mono text-[11px] text-[var(--text-3)]">
+                      {new Date(v.at).toLocaleDateString()} · {relativeTime(v.at)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
         {section === 'The skill' && (
           <>
             <Markdown text={SKILL_INTRO} />
