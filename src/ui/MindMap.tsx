@@ -81,6 +81,9 @@ export default function MindMap() {
   const [nodeMemories, setNodeMemories] = useState<Memory[]>([]);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, w: W, h: H });
   const dragging = useRef<{ x: number; y: number } | null>(null);
+  // node dragging, obsidian-style: positions live in state; a drag moves one node, edges follow
+  const [positions, setPositions] = useState<Map<string, Pos>>(new Map());
+  const nodeDrag = useRef<{ id: string; moved: boolean } | null>(null);
 
   useEffect(() => {
     void api
@@ -108,7 +111,10 @@ export default function MindMap() {
     };
   }, [selected]);
 
-  const pos = useMemo(() => (map ? layout(map) : new Map<string, Pos>()), [map]);
+  useEffect(() => {
+    setPositions(map ? layout(map) : new Map<string, Pos>());
+  }, [map]);
+  const pos = positions;
 
   const build = async () => {
     setBuilding(true);
@@ -190,8 +196,26 @@ export default function MindMap() {
                 (e.target as Element).setPointerCapture?.(e.pointerId);
               }}
               onPointerMove={(e) => {
-                if (!dragging.current) return;
                 const scale = viewBox.w / (e.currentTarget.clientWidth || W);
+                if (nodeDrag.current) {
+                  const { id } = nodeDrag.current;
+                  nodeDrag.current.moved = true;
+                  const last = dragging.current ?? { x: e.clientX, y: e.clientY };
+                  setPositions((p) => {
+                    const next = new Map(p);
+                    const cur = next.get(id);
+                    if (cur) {
+                      next.set(id, {
+                        x: cur.x + (e.clientX - last.x) * scale,
+                        y: cur.y + (e.clientY - last.y) * scale,
+                      });
+                    }
+                    return next;
+                  });
+                  dragging.current = { x: e.clientX, y: e.clientY };
+                  return;
+                }
+                if (!dragging.current) return;
                 setViewBox((v) => ({
                   ...v,
                   x: v.x - (e.clientX - dragging.current!.x) * scale,
@@ -199,7 +223,14 @@ export default function MindMap() {
                 }));
                 dragging.current = { x: e.clientX, y: e.clientY };
               }}
-              onPointerUp={() => (dragging.current = null)}
+              onPointerUp={() => {
+                if (nodeDrag.current && !nodeDrag.current.moved && map) {
+                  const n = map.nodes.find((x) => x.id === nodeDrag.current!.id);
+                  if (n) setSelected(selected?.id === n.id ? null : n);
+                }
+                nodeDrag.current = null;
+                dragging.current = null;
+              }}
               onWheel={(e) => {
                 const f = e.deltaY > 0 ? 1.12 : 0.9;
                 setViewBox((v) => {
@@ -252,11 +283,17 @@ export default function MindMap() {
                     key={n.id}
                     transform={`translate(${p.x},${p.y})`}
                     opacity={dim ? 0.22 : 1}
-                    className="cursor-pointer"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => setSelected(selected?.id === n.id ? null : n)}
+                    className="cursor-grab active:cursor-grabbing"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      nodeDrag.current = { id: n.id, moved: false };
+                      dragging.current = { x: e.clientX, y: e.clientY };
+                      (e.currentTarget.ownerSVGElement as SVGSVGElement | null)?.setPointerCapture?.(
+                        e.pointerId,
+                      );
+                    }}
                     role="button"
-                    aria-label={`${n.label} (${n.kind}, ${n.memoryIds.length} memories)`}
+                    aria-label={`${n.label} (${n.kind}, ${n.memoryIds.length} memories) — drag to move`}
                   >
                     <circle r={r + 5} fill={color} opacity="0.12" />
                     <circle
