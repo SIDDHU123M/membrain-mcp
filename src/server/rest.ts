@@ -27,6 +27,7 @@ import {
   importSkillsJson,
 } from '../core/skills.js';
 import { backupDbFile, exportMarkdownFolder, exportMemories, importMemoriesJson } from '../core/backup.js';
+import { bus, type MemoryEvent } from '../core/events.js';
 import { findDuplicates } from '../core/dedupe.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -226,6 +227,18 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
       end: () => res.end(),
     };
   };
+
+  // the wire: every write from any writer (UI, REST, MCP, import) streams here
+  app.get('/api/events', (req, reply) => {
+    const s = sseStart(reply);
+    const onEvent = (e: MemoryEvent) => s.send('memory', e);
+    bus.on('memory', onEvent);
+    const beat = setInterval(() => reply.raw.write(':hb\n\n'), 25000);
+    req.raw.on('close', () => {
+      clearInterval(beat);
+      bus.off('memory', onEvent);
+    });
+  });
 
   app.get('/api/insights/map/stream', async (_req, reply) => {
     const s = sseStart(reply);

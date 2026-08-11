@@ -390,6 +390,39 @@ export default function Memories({
     return () => clearTimeout(t);
   }, [load, query]);
 
+  // the wire: when any writer touches the store (an agent over MCP, a script,
+  // another tab), refresh the ledger and flash the arriving entry.
+  const [fresh, setFresh] = useState<Set<number>>(new Set());
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+  useEffect(() => {
+    const es = new EventSource('/api/events');
+    let t: ReturnType<typeof setTimeout> | null = null;
+    es.addEventListener('memory', (ev) => {
+      const e = JSON.parse((ev as MessageEvent).data) as { type: string; id: number };
+      if (e.type !== 'deleted') {
+        setFresh((s) => new Set(s).add(e.id));
+        setTimeout(
+          () =>
+            setFresh((s) => {
+              const n = new Set(s);
+              n.delete(e.id);
+              return n;
+            }),
+          3000,
+        );
+      }
+      if (t) clearTimeout(t);
+      t = setTimeout(() => void loadRef.current(), 250);
+    });
+    return () => {
+      if (t) clearTimeout(t);
+      es.close();
+    };
+  }, []);
+
   const loadProposals = useCallback(async () => {
     try {
       setProposals(await api.proposals());
@@ -1148,7 +1181,11 @@ export default function Memories({
       ) : (
         <div className="card rise overflow-hidden">
           {visible.map((m) => (
-            <div key={m.id} className="flex items-center border-b border-[var(--line)] last:border-b-0" onContextMenu={(e) => openCtx(e, m)}>
+            <div
+              key={m.id}
+              className={`flex items-center border-b border-[var(--line)] last:border-b-0 ${fresh.has(m.id) ? 'wire-fresh' : ''}`}
+              onContextMenu={(e) => openCtx(e, m)}
+            >
               <input
                 type="checkbox"
                 className="ml-3.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-[#1e3a8a]"

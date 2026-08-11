@@ -3,6 +3,8 @@ import { type DB, ensureVecTable, getSetting, setSetting } from './db.js';
 import { chunkText } from './chunking.js';
 import type { Embedder } from './embeddings.js';
 
+import { emitMemoryEvent } from './events.js';
+
 export class ValidationError extends Error {}
 export class NotFoundError extends Error {}
 
@@ -87,6 +89,7 @@ export async function saveMemory(
     .run(content, JSON.stringify(tags), input.source, now, now).lastInsertRowid as number;
   await writeChunks(db, embedder, id, content);
   setSetting(db, 'embedding_model', embedder.model);
+  emitMemoryEvent({ type: 'saved', id, source: input.source });
   return getMemory(db, id);
 }
 
@@ -116,6 +119,7 @@ export async function updateMemory(
     db.prepare('UPDATE memories SET title = NULL WHERE id = ?').run(id);
     await writeChunks(db, embedder, id, content);
   }
+  emitMemoryEvent({ type: 'updated', id, source: existing.source });
   return getMemory(db, id);
 }
 
@@ -127,6 +131,7 @@ export function deleteMemory(db: DB, id: number): void {
       db.prepare('DELETE FROM chunks_vec WHERE rowid = ?').run(BigInt(cid));
     db.prepare('DELETE FROM memories WHERE id = ?').run(id); // chunks cascade
   })();
+  emitMemoryEvent({ type: 'deleted', id });
 }
 
 export function listMemories(

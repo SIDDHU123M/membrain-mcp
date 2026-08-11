@@ -465,6 +465,15 @@ code.pill {
     outline-color 0.4s ease;
 }
 
+/* a fresh entry arrives with a wash of ink, then dries into the page */
+.wire-fresh {
+  animation: wire-in 2.6s ease-out both;
+}
+@keyframes wire-in {
+  0% { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+  100% { background: transparent; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
