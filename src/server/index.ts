@@ -110,7 +110,18 @@ async function main() {
   registerMcpHttp(app, ctx);
 
   const uiDir = path.resolve(fileURLToPath(import.meta.url), '../../ui');
-  await app.register(fastifyStatic, { root: uiDir, wildcard: false });
+  await app.register(fastifyStatic, {
+    root: uiDir,
+    wildcard: false,
+    // browsers heuristically cache HTML with no headers — users then run
+    // yesterday's bundle and report missing features. HTML revalidates every
+    // load; hashed assets are immutable so they cache forever.
+    setHeaders(res, filepath) {
+      if (filepath.endsWith('.html')) res.setHeader('cache-control', 'no-cache');
+      else if (filepath.includes(`${path.sep}assets${path.sep}`))
+        res.setHeader('cache-control', 'public, max-age=31536000, immutable');
+    },
+  });
   app.get('/landing', (_req, reply) => reply.sendFile('landing.html'));
   // SPA fallback: unknown non-API GETs serve the UI
   app.setNotFoundHandler((req, reply) => {
