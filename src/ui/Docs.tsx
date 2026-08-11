@@ -6,14 +6,36 @@ import skillMd from '../../skills/membrain/SKILL.md?raw';
 const QUICKSTART = `
 ## Install
 
+Global install is the default. It gives you the \`membrain\` command everywhere:
+
 \`\`\`
 npm install -g membrain-mcp
+\`\`\`
+
+Prefer not to install globally? One-shot from any folder: \`npx membrain-mcp\`.
+
+## Going live
+
+Type one word:
+
+\`\`\`
 membrain
 \`\`\`
 
-The server starts on \`http://127.0.0.1:7777\` and the ledger opens in your browser. The first run
-downloads a small local embedding model (about 80 MB) into \`./data\`; after that everything works
-offline. One-shot without installing: \`npx membrain-mcp\`.
+That single command brings everything up at once:
+
+- The **web ledger** starts at \`http://127.0.0.1:7777\` and opens in your browser by itself
+  (\`--no-open\` if you don't want that).
+- The **MCP server** is live at \`http://127.0.0.1:7777/mcp\` from that same moment. Nothing else
+  to start; agents can connect immediately.
+- The **REST API** is up at \`http://127.0.0.1:7777/api/memories\` for scripts.
+
+Keep the terminal open — that process *is* the server. \`Ctrl+C\` stops it; your memories stay in
+\`data/memory.db\` and everything is exactly where you left it on the next \`membrain\`.
+
+The first run downloads a small local embedding model (about 80 MB) into \`./data\`; after that
+everything works offline. The data directory is wherever you ran the command, so run it from the
+same folder each time, or pin one forever with \`membrain --data C:/memory\`.
 
 ## Command
 

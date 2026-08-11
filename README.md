@@ -25,16 +25,22 @@ fully offline.
 
 ## Install
 
+Global install is the default — it gives you the `membrain` command everywhere:
+
 ```bash
 npm install -g membrain-mcp
 membrain
 ```
 
-That's the whole setup. The server starts on `http://127.0.0.1:7777` and the ledger opens in your
-browser. The first run downloads a small local embedding model (about 80 MB) into `./data`; after
-that everything works offline.
+That one word brings everything up at once: the web ledger starts on `http://127.0.0.1:7777` and
+opens in your browser, the MCP server is live at `/mcp` from the same moment, and the REST API is
+up at `/api/memories`. Keep the terminal open — that process is the server; `Ctrl+C` stops it and
+your memories stay in `data/memory.db`.
 
-Prefer not to install?
+The first run downloads a small local embedding model (about 80 MB) into `./data`; after that
+everything works offline.
+
+Prefer not to install globally? One-shot from any folder:
 
 ```bash
 npx membrain-mcp
