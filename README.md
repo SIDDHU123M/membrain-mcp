@@ -1,118 +1,84 @@
-<p align="center"><img src="assets/membrain-logo.png" alt="Membrain" width="220"></p>
-
 # Membrain
 
-**One memory, every AI.** Self-hosted, single-user memory server. You (web UI) and your AI agents (MCP) share one memory store — everyone reads, everyone writes. One SQLite file, no accounts, no cloud.
+**One memory, every AI.** A self-hosted memory ledger you run on your own machine. You write to it
+from a web UI. Your agents write to it over MCP: Claude Code, Claude Desktop, Cursor, anything that
+speaks the protocol. What one remembers, all of them know.
 
-## Quickstart (5 minutes)
+Everything lives in one SQLite file on your disk. No accounts, no cloud, no telemetry. Works fully
+offline.
+
+## Install
 
 ```bash
-npm install
-npm run build
-npm start
+npm install -g membrain-mcp
 ```
 
-- **Web UI** → http://127.0.0.1:7777
-- **MCP (Streamable HTTP)** → `http://127.0.0.1:7777/mcp`
-- **REST** → `http://127.0.0.1:7777/api/memories`
+Then start it:
 
-First start downloads the local embedding model (all-MiniLM, ~80 MB) into `data/models/` — after that everything runs fully offline. All data lives in `data/memory.db`. Copy it = backup. Delete it = gone.
+```bash
+membrain
+```
 
-### Connect your agents
+That's the whole setup. The server starts on `http://127.0.0.1:7777` and the ledger opens in your
+browser. The first run downloads a small local embedding model (about 80 MB) into `./data`; after
+that everything works offline.
 
-Full walkthrough for Claude Code, Claude Desktop, Cursor, stdio clients, and scripts: **[docs/connect-agents.md](docs/connect-agents.md)**. Short version:
+Prefer not to install? One-shot:
+
+```bash
+npx membrain-mcp
+```
+
+## Command
+
+```
+membrain [options]
+
+  --port <n>            port, default 7777
+  --data <dir>          data directory, default ./data (holds memory.db + models)
+  --no-open             don't open the browser on start
+  --stdio               run as an MCP stdio server (for clients that spawn the process)
+  --readonly-skills     block writes to agent skill files
+  --host <ip>           bind a non-localhost interface; requires --i-understand-no-auth
+```
+
+The whole store is `data/memory.db`. Copy it and that's a backup. Delete it and it's gone.
+
+## Connect your agents
+
+Claude Code, one line:
 
 ```bash
 claude mcp add --transport http membrain http://127.0.0.1:7777/mcp
 ```
 
-Then install the **membrain skill** ([skills/membrain/SKILL.md](skills/membrain/SKILL.md)) into `~/.claude/skills/membrain/` or `~/.agents/skills/membrain/` so agents search and save memory *unprompted*, not just when asked. Manage it later from the web UI's Skills tab.
+Cursor (`.cursor/mcp.json`) or any Streamable HTTP client:
 
-## How the MCP works
-
-```mermaid
-%%{init: {'theme':'base','themeVariables':{
-  'primaryColor':'#101018','primaryTextColor':'#f2f2f7','primaryBorderColor':'#4f8ef7',
-  'lineColor':'#7a8db0','fontFamily':'Segoe UI, sans-serif','fontSize':'14px',
-  'clusterBkg':'#0a0a10','clusterBorder':'#2a2c3a','edgeLabelBackground':'#16161f',
-  'tertiaryTextColor':'#f2f2f7'
-}}}%%
-flowchart LR
-    subgraph clients ["🤖 Agents"]
-        CC["Claude Code"]
-        CU["Cursor · any MCP client"]
-        CD["Claude Desktop"]
-    end
-    YOU(["🧑 You · browser"])
-
-    CC -- "Streamable HTTP /mcp" --> MCP
-    CU -- "Streamable HTTP /mcp" --> MCP
-    CD -- "stdio · spawns membrain --stdio" --> MCP
-    YOU -- "web UI + REST /api" --> REST
-
-    subgraph membrain ["🧠 membrain · one process"]
-        MCP["MCP server<br/>5 tools"]
-        REST["REST + web UI"]
-        CORE["core<br/>chunk → embed → hybrid search"]
-        OLL["Ollama qwen<br/>distill · organize · title"]
-        MCP --> CORE
-        REST --> CORE
-        CORE -. "local LLM" .-> OLL
-    end
-
-    CORE --> DB[("memory.db<br/>SQLite + sqlite-vec + FTS5")]
-
-    classDef agent fill:#0f1a2e,stroke:#4f8ef7,stroke-width:1.5px,color:#cfe0ff,rx:8,ry:8
-    classDef human fill:#0e2420,stroke:#5eead4,stroke-width:1.5px,color:#c9f5ec
-    classDef svc fill:#14141d,stroke:#8b7cf7,stroke-width:1.5px,color:#e6e0ff,rx:8,ry:8
-    classDef core fill:#101018,stroke:#4f8ef7,stroke-width:2px,color:#f2f2f7,rx:8,ry:8
-    classDef llm fill:#241a10,stroke:#e0b36a,stroke-width:1.5px,color:#f5e3c4,rx:8,ry:8
-    classDef store fill:#1c1426,stroke:#c4b5fd,stroke-width:2px,color:#ece6ff
-
-    class CC,CU,CD agent
-    class YOU human
-    class MCP,REST svc
-    class CORE core
-    class OLL llm
-    class DB store
+```json
+{ "mcpServers": { "membrain": { "url": "http://127.0.0.1:7777/mcp" } } }
 ```
 
-Every writer goes through the same core — an agent's memory and yours are indistinguishable except for the recorded `source`.
+Claude Desktop (stdio, spawns its own process against the same data dir):
 
-```mermaid
-%%{init: {'theme':'base','themeVariables':{
-  'primaryColor':'#101018','primaryTextColor':'#f2f2f7','primaryBorderColor':'#4f8ef7',
-  'lineColor':'#7a8db0','fontFamily':'Segoe UI, sans-serif','fontSize':'13px',
-  'actorBkg':'#0f1a2e','actorBorder':'#4f8ef7','actorTextColor':'#cfe0ff',
-  'actorLineColor':'#3a3c4a','signalColor':'#9fa1b3','signalTextColor':'#c8cad6',
-  'noteBkgColor':'#241a10','noteBorderColor':'#e0b36a','noteTextColor':'#f5e3c4',
-  'activationBkgColor':'#1c1426','activationBorderColor':'#c4b5fd'
-}}}%%
-sequenceDiagram
-    autonumber
-    participant A as 🤖 Agent<br/>(Claude Code)
-    participant M as 🧠 membrain<br/>/mcp
-    participant D as 🗄️ memory.db
-
-    A->>+M: initialize · clientInfo "claude-code"
-    M-->>-A: session id + 5 tools
-    A->>+M: save_memory("user prefers dark mode", ["preferences"])
-    M->>M: chunk → embed · local MiniLM
-    M->>D: INSERT memory + vectors · source = mcp:claude-code
-    M-->>-A: { id }
-
-    Note over A,D: later — any other agent, or you in the web UI
-
-    A->>+M: search_memory("what UI theme does the user like?")
-    M->>D: vector top-k (sqlite-vec) + keyword (FTS5)
-    M->>M: merge · reciprocal rank fusion
-    M-->>-A: [{ content, score, tags, source, created_at }]
+```json
+{
+  "mcpServers": {
+    "membrain": {
+      "command": "membrain",
+      "args": ["--stdio", "--data", "/path/to/your/data"]
+    }
+  }
+}
 ```
+
+Then try it: tell one agent *"remember that my favorite editor is neovim"*, open the ledger, and
+watch the entry appear stamped with that agent's name. Ask a different agent tomorrow; it knows.
 
 ### MCP tools
 
 | Tool | Does |
 |---|---|
+| `memory_context(query?, top_k?)` | one-call digest of what's known, for session starts |
 | `save_memory(content, tags?)` | store a durable fact |
 | `save_memories(memories[])` | store several facts in one call |
 | `search_memory(query, top_k?, tags?)` | hybrid semantic + keyword search, recency-boosted |
@@ -120,44 +86,45 @@ sequenceDiagram
 | `update_memory(id, content?, tags?)` | edit a memory |
 | `delete_memory(id)` | remove a memory |
 | `list_memories(limit?, tag?)` | recent memories |
-| `memory_context(query?, top_k?)` | one-call session-start digest of what's known |
 
-## Web UI — the memory ledger
+## The ledger
 
-Paper-and-ink archival design, its own identity: ruled ledger entries, serif headings, per-writer ink stamps, an index rail, a night-ledger dark mode.
+The web UI is a paper-and-ink ledger with a night mode. What it does:
 
-- **Memories** — hybrid search (sqlite-vec + FTS5, RRF-merged, recency-boosted), ledger/cards/topics views, tag + writer filters, multi-select, right-hand drawer to read and manage each entry.
-- **The clerk** (needs local Ollama) — *Organize* files the store into topics incrementally with a live progress bar (topics appear as it works), *Titles* drafts one entry at a time, *Summarize* works on any scope, *Duplicates* finds near-identical entries by vector similarity (no LLM, instant) for one-click strike.
-- **AI proposal queue** — every change membrain's own LLM wants to make to a live memory is staged for accept/reject. Nothing is inked silently.
-- **Reviewed imports** — dropped PDFs/MD/TXT are extracted into candidate entries you review, edit, and selectively file before anything is saved.
-- **Map** — the atlas: an entity/relationship constellation of everything the store knows, drawn by the local LLM. Visualization only, never used for retrieval.
-- **Backup** — snapshot on every boot (keeps 5), one-click SQLite snapshot, JSON export/import of memories and skills, selective export.
-- **Skills** — manage agent skills on disk (`~/.claude/skills` + `~/.agents/skills`): markdown preview/code editor, create, download, delete. `--readonly-skills` locks them.
-- **Agent Import** — finds pre-existing agent memory on your machine, tracks what's already filed (content-hash), updates changed files instead of duplicating.
-- **Settings** — everything configurable from the UI; no config files.
+- **Memories** — hybrid search (sqlite-vec + FTS5 with reciprocal rank fusion), ledger, card, and
+  topic views, filters by tag and by writer, multi-select, right-click context menu, and a drawer
+  for reading and editing each entry.
+- **The clerk** — a local Ollama (or a cloud model, see below) organizes the store into topics with
+  live progress, drafts titles one entry at a time, summarizes any selection, and flags duplicate
+  entries so you can strike them in one click.
+- **Proposal queue** — every change the AI wants to make to a live memory is staged for your
+  review first. Nothing is applied silently.
+- **Reviewed imports** — drop a PDF, Markdown, or text file; it's distilled into candidate entries
+  you edit and selectively file. Ollama down? The raw text imports anyway.
+- **Map** — an interactive constellation of the people, projects, and tools in your store.
+- **Skills** — edit your agents' SKILL.md files (in `~/.claude/skills` and `~/.agents/skills`)
+  with a markdown preview.
+- **Agent import** — pull the memory your agents already keep on disk into the ledger, tracked by
+  content hash so nothing imports twice.
+- **Backups** — a snapshot on every boot (keeps five), one-click snapshot downloads, portable JSON
+  export and import.
+- **Settings** — all of it configurable in the UI, including the AI provider.
 
-## LLM-assisted import (Ollama)
+## The AI
 
-If a local [Ollama](https://ollama.com) is running, imported documents are distilled by it: the text is windowed and each window's key points are extracted and saved as individual memories. No Ollama → the raw text is saved as one chunked memory. Import always works offline.
+By default the clerk uses a local [Ollama](https://ollama.com) if one is running. No GPU, or no
+Ollama? Open Settings and paste an API key for OpenAI, Anthropic (Claude), OpenRouter, NVIDIA NIM,
+or any OpenAI-compatible endpoint. There's a test button.
 
-Settings (edit in the UI's Settings tab, stored in the `settings` table):
+The AI is optional. Memory itself — saving, searching, the MCP tools — runs entirely on the local
+embedding model and needs nothing.
 
-| Key | Default | Meaning |
-|---|---|---|
-| `ollama_url` | `http://127.0.0.1:11434` | Ollama endpoint |
-| `ollama_model` | first installed model | model used for extraction |
-| `import_llm` | on | set `off` to always import raw |
-| `embedding_provider` | `local` | `api` for an OpenAI-compatible endpoint (`embedding_api_url`, `embedding_api_model`, `embedding_api_key`) |
-| `skill_roots` | `~/.claude/skills` + `~/.agents/skills` | named skill directories |
-| `agent_memory_dirs` | `[]` | extra dirs scanned for agent memory files |
+## Security
 
-Changing the embedding model re-embeds every chunk on next boot — models are never mixed.
-
-## CLI flags
-
-```
-membrain [--port 7777] [--host 127.0.0.1] [--data ./data] [--stdio] [--readonly-skills]
-```
+There is no auth, by design. The default bind is `127.0.0.1` and the docs assume it stays there.
+Anyone who can reach the port can read and write your memory, so never expose it on a public
+interface. Binding anything else requires an explicit `--host <ip> --i-understand-no-auth`, and
+should only ever point at a private network you trust (Tailscale, WireGuard).
 
 ## Docker
 
@@ -166,29 +133,21 @@ docker build -t membrain .
 docker run -p 127.0.0.1:7777:7777 -v membrain-data:/app/data membrain
 ```
 
-Keep the port binding on `127.0.0.1` — the container boundary is not an auth layer.
-
-## ⚠️ Security
-
-**There is no auth. Anywhere. By design.** Security is the network boundary: the default bind is `127.0.0.1`. Never expose Membrain to a public interface — anyone who can reach the port owns your memory (and can write files into your skill directories). Binding non-localhost requires the explicit flag pair:
-
-```
-membrain --host 0.0.0.0 --i-understand-no-auth
-```
-
-Only do that on an interface you trust end-to-end (Tailscale, WireGuard, private LAN).
+Keep the port binding on `127.0.0.1`. The container boundary is not an auth layer.
 
 ## Development
 
 ```bash
-npm run dev        # server with tsx (UI needs a build first, or run vite separately)
-npm test           # vitest — real SQLite in temp dirs, fake embedder, no network
-npm run typecheck
+git clone <repo> && cd membrain
+npm install
+npm run dev        # server via tsx
+npm test           # vitest, 50 tests, no network
+npm run build      # dist/server + dist/ui
 ```
 
-## Docs
+Architecture and working rules live in `CLAUDE.md`; the product spec in `docs/membrain-prd.md`;
+agent connection details in `docs/connect-agents.md`.
 
-- **[docs/connect-agents.md](docs/connect-agents.md)** — add Membrain to Claude Code, Claude Desktop, Cursor, any MCP client; verify the shared-memory loop.
-- **[skills/membrain/SKILL.md](skills/membrain/SKILL.md)** — the skill that teaches agents to use memory unprompted.
-- **[docs/membrain-prd.md](docs/membrain-prd.md)** — product spec.
-- **[CLAUDE.md](CLAUDE.md)** — architecture and working rules for this repo.
+## License
+
+MIT

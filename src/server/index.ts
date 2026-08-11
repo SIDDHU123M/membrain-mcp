@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
@@ -76,9 +77,25 @@ async function main() {
   });
 
   await app.listen({ host, port });
-  log(`membrain: UI      http://${host}:${port}`);
-  log(`membrain: MCP     http://${host}:${port}/mcp`);
-  log(`membrain: REST    http://${host}:${port}/api/memories`);
+  const uiUrl = `http://${host === '0.0.0.0' ? '127.0.0.1' : host}:${port}`;
+  log(`membrain: UI      ${uiUrl}`);
+  log(`membrain: MCP     ${uiUrl}/mcp`);
+  log(`membrain: REST    ${uiUrl}/api/memories`);
+
+  // default behavior: open the ledger in the browser (suppress with --no-open;
+  // never inside containers/CI where there is no display)
+  if (!has('--no-open') && !process.env.CI && !fs.existsSync('/.dockerenv')) {
+    try {
+      const { exec } = await import('node:child_process');
+      const cmd =
+        process.platform === 'win32'
+          ? `start "" "${uiUrl}"`
+          : process.platform === 'darwin'
+            ? `open "${uiUrl}"`
+            : `xdg-open "${uiUrl}"`;
+      exec(cmd, () => {});
+    } catch {}
+  }
 }
 
 main().catch((err) => {

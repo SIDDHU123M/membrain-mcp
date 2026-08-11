@@ -61,12 +61,12 @@
         transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
       }
       .btn:hover { background: var(--glow); border-color: var(--cream); color: var(--cream); }
-      /* solid button owns every state — .btn:hover must never bleed into it */
+      /* solid button: ink on paper, owns every state — .btn:hover must never bleed into it */
       .btn-solid,
       .btn-solid:hover {
-        background: var(--navy); color: #f6f3ea; border-color: var(--navy);
+        background: var(--plate); color: #f2ede0; border-color: var(--plate);
       }
-      .btn-solid:hover { background: #2a4da0; border-color: #2a4da0; }
+      .btn-solid:hover { background: #262421; border-color: #262421; }
 
       code.pill {
         font-family: var(--mono); font-size: 13px;
@@ -202,7 +202,7 @@
           <a href="#features">Features</a>
           <a href="#how">How it works</a>
           <a href="#tools">MCP tools</a>
-          <a class="btn-solid btn" href="/">Open the ledger</a>
+          <a class="btn-solid btn" href="https://devlune.in" target="_blank" rel="noreferrer">DevLune</a>
         </div>
       </nav>
     </header>
@@ -405,7 +405,7 @@
           <h2>Give your AIs a memory<br />that belongs to <em class="serif" style="font-style: italic">you</em>.</h2>
           <div class="cta">
             <span class="npx" style="font-family: var(--mono)"><b style="color: var(--cream-3)">$</b> npx membrain-mcp</span>
-            <a class="btn-solid btn" href="/">Open the ledger</a>
+            <a class="btn-solid btn" href="https://devlune.in" target="_blank" rel="noreferrer">Built by DevLune</a>
           </div>
         </div>
       </div>
@@ -415,6 +415,7 @@
       <div class="wrap">
         <span>Membrain, the memory ledger</span>
         <span>Local-first · Offline-capable · No telemetry</span>
+        <span>Built by <a href="https://devlune.in" target="_blank" rel="noreferrer" style="color: var(--cream-2)">DevLune</a></span>
         <span class="right">One SQLite file. That's the whole cloud.</span>
       </div>
     </footer>
