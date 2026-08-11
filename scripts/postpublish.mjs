@@ -7,15 +7,16 @@ import fs from 'node:fs';
 const { name, version } = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const spec = `${name}@${version}`;
 
-for (let attempt = 1; attempt <= 3; attempt++) {
+const TRIES = 6;
+for (let attempt = 1; attempt <= TRIES; attempt++) {
   try {
     execSync(`npm install -g ${spec}`, { stdio: 'inherit' });
     console.log(`postpublish: global ${spec} installed`);
     process.exit(0);
   } catch {
-    if (attempt < 3) {
-      console.log(`postpublish: registry not ready yet, retrying (${attempt}/3)...`);
-      await new Promise((r) => setTimeout(r, 5000));
+    if (attempt < TRIES) {
+      console.log(`postpublish: registry not ready yet, retrying (${attempt}/${TRIES})...`);
+      await new Promise((r) => setTimeout(r, 10000));
     }
   }
 }
