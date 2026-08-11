@@ -31,4 +31,18 @@ while (queue.length) {
   }
 }
 fs.writeFileSync(path.join(out, 'index.html'), html);
-console.log(`site-dist/ ready: index.html + ${copied.size} assets`);
+
+// ---- SEO furniture ----
+const SITE = 'https://membrain.devlune.in';
+// social preview image referenced by og:image
+fs.copyFileSync('assets/membrain-logo.png', path.join(out, 'og.png'));
+fs.writeFileSync(path.join(out, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
+fs.writeFileSync(
+  path.join(out, 'sitemap.xml'),
+  `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE}/</loc><lastmod>${new Date().toISOString().slice(0, 10)}</lastmod><changefreq>weekly</changefreq></url>\n</urlset>\n`,
+);
+// IndexNow ownership key (public by design; ping after deploy tells Bing & friends to recrawl)
+const INDEXNOW_KEY = '67a3bda0791c83ecba68e251b67c4135';
+fs.writeFileSync(path.join(out, `${INDEXNOW_KEY}.txt`), INDEXNOW_KEY);
+
+console.log(`site-dist/ ready: index.html + ${copied.size} assets + og/robots/sitemap/indexnow`);

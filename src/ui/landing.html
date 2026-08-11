@@ -3,12 +3,103 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Membrain: one memory, every AI</title>
+    <title>Membrain — Self-Hosted AI Memory Server for MCP Agents | One Memory, Every AI</title>
     <meta
       name="description"
-      content="Self-hosted memory for you and your AI agents. One SQLite file, a web ledger, and an MCP endpoint. No accounts, no cloud, works offline."
+      content="Membrain is a free, open-source, self-hosted memory server for AI agents. Claude, Cursor and any MCP client share one memory — one SQLite file on your machine, web UI included, works offline. npm i -g membrain-mcp"
     />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>" />
+    <link rel="canonical" href="https://membrain.devlune.in/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta
+      name="keywords"
+      content="MCP memory server, self-hosted AI memory, Claude memory, Cursor memory, model context protocol, agent memory, MCP server, persistent memory for AI agents, local-first, SQLite"
+    />
+    <meta name="author" content="DevLune" />
+    <meta name="theme-color" content="#f4f1e8" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Membrain" />
+    <meta property="og:url" content="https://membrain.devlune.in/" />
+    <meta property="og:title" content="Membrain — self-hosted memory your AI agents share over MCP" />
+    <meta property="og:description" content="One memory for Claude, Cursor and every MCP client. Self-hosted, one SQLite file, web UI, fully offline. Free and open source." />
+    <meta property="og:image" content="https://membrain.devlune.in/og.png" />
+    <meta property="og:image:width" content="1536" />
+    <meta property="og:image:height" content="1024" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Membrain — one memory, every AI" />
+    <meta name="twitter:description" content="Self-hosted memory for AI agents over MCP. One SQLite file, web UI, offline. npm i -g membrain-mcp" />
+    <meta name="twitter:image" content="https://membrain.devlune.in/og.png" />
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2218%22 fill=%22%23f4f1e8%22/><rect x=%227%22 y=%227%22 width=%2286%22 height=%2286%22 rx=%2212%22 fill=%22none%22 stroke=%22%231c1917%22 stroke-width=%225%22/><text x=%2250%22 y=%2270%22 font-family=%22Georgia,serif%22 font-size=%2256%22 font-weight=%22bold%22 text-anchor=%22middle%22 fill=%22%231c1917%22>M</text></svg>" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://membrain.devlune.in/#app",
+          "name": "Membrain",
+          "alternateName": "membrain-mcp",
+          "applicationCategory": "DeveloperApplication",
+          "operatingSystem": "Windows, macOS, Linux",
+          "softwareRequirements": "Node.js 20+",
+          "url": "https://membrain.devlune.in/",
+          "downloadUrl": "https://www.npmjs.com/package/membrain-mcp",
+          "installUrl": "https://www.npmjs.com/package/membrain-mcp",
+          "license": "https://github.com/SIDDHU123M/membrain-mcp/blob/master/LICENSE",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "description": "Self-hosted memory server for AI agents. Claude, Cursor and any MCP client share one memory store — a single SQLite file on your machine, with a web UI, REST API and MCP endpoint. Works fully offline.",
+          "author": { "@id": "https://devlune.in/#org" },
+          "keywords": "MCP, model context protocol, AI memory, self-hosted, agent memory, Claude, Cursor, SQLite"
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://devlune.in/#org",
+          "name": "DevLune",
+          "url": "https://devlune.in",
+          "email": "sidharth@devlune.in",
+          "sameAs": ["https://instagram.com/dev.lune", "https://github.com/SIDDHU123M"]
+        },
+        {
+          "@type": "WebSite",
+          "url": "https://membrain.devlune.in/",
+          "name": "Membrain",
+          "publisher": { "@id": "https://devlune.in/#org" }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is Membrain?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Membrain is a self-hosted memory server for AI agents. You and your agents — Claude, Cursor, any MCP client — read and write one shared memory store: a single SQLite file on your machine, with a web UI to inspect and edit everything. Install with npm i -g membrain-mcp." }
+            },
+            {
+              "@type": "Question",
+              "name": "How do I connect Claude Code or Claude Desktop to Membrain?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Run membrain, then add the MCP endpoint: claude mcp add --transport http membrain http://127.0.0.1:7777/mcp. Claude Desktop and other clients connect over Streamable HTTP or stdio the same way." }
+            },
+            {
+              "@type": "Question",
+              "name": "Is Membrain free and open source?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. MIT licensed, free forever, source on GitHub. No accounts, no telemetry, no cloud dependency." }
+            },
+            {
+              "@type": "Question",
+              "name": "Where is my data stored?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Everything lives in one SQLite file (data/memory.db) on your own machine. Search runs on local embeddings, so the whole thing works offline. A backup is a file copy." }
+            },
+            {
+              "@type": "Question",
+              "name": "How is Membrain different from mem0, Zep or OpenMemory?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Membrain is single-user and local-first by design: no accounts, no hosted service, no external vector database. One process serves the web ledger, REST API and MCP endpoint over one SQLite file, and every AI edit is staged for your review." }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
     <script type="module" src="/landing.ts"></script>
     <style>
       /* ————— the ledger in daylight: paper and ink, logo framed as a printed plate. ————— */
@@ -186,6 +277,18 @@
       .warning code { font-family: var(--mono); font-size: 13px; color: var(--cream); }
 
       /* footer */
+      /* faq — native details, ruled like the ledger */
+      .faq details { border-bottom: 1px solid var(--hairline); }
+      .faq summary {
+        cursor: pointer; padding: 16px 0; font-family: var(--serif);
+        font-size: 17px; font-weight: 560; list-style: none; position: relative;
+      }
+      .faq summary::-webkit-details-marker { display: none; }
+      .faq summary::after { content: '+'; position: absolute; right: 4px; color: var(--cream-3); }
+      .faq details[open] summary::after { content: '−'; }
+      .faq details p { padding: 0 0 16px; font-size: 14.5px; color: var(--cream-2); max-width: 60em; }
+      .faq details a { color: var(--navy); }
+
       .final { text-align: center; padding: 90px 0 40px; }
       .final h2 { font-size: clamp(30px, 4.4vw, 46px); font-weight: 560; }
       .final .cta { margin-top: 28px; display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; }
@@ -409,6 +512,38 @@ membrain
               anything else requires the explicit flag pair
               <code>--host … --i-understand-no-auth</code>. Never put Membrain on a public interface. Anyone who can reach the port owns your memory.
             </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq">
+        <div class="wrap">
+          <div class="rule-double"></div>
+          <div class="sec-head" style="margin-top: 14px">
+            <span class="label">Common questions</span>
+            <h2>Questions, answered plainly</h2>
+          </div>
+          <div class="faq">
+            <details>
+              <summary>What is Membrain?</summary>
+              <p>A self-hosted memory server for AI agents. You and your agents — Claude, Cursor, any MCP client — read and write one shared store: a single SQLite file on your machine, with a web UI to inspect and edit everything. Install with <code>npm i -g membrain-mcp</code>.</p>
+            </details>
+            <details>
+              <summary>How do I connect Claude Code or Claude Desktop?</summary>
+              <p>Run <code>membrain</code>, then add the endpoint: <code>claude mcp add --transport http membrain http://127.0.0.1:7777/mcp</code>. Other clients connect over Streamable HTTP or stdio the same way.</p>
+            </details>
+            <details>
+              <summary>Is it free and open source?</summary>
+              <p>Yes. MIT licensed, free forever, source on <a href="https://github.com/SIDDHU123M/membrain-mcp" target="_blank" rel="noreferrer">GitHub</a>. No accounts, no telemetry, no cloud dependency.</p>
+            </details>
+            <details>
+              <summary>Where is my data stored?</summary>
+              <p>One SQLite file — <code>data/memory.db</code> — on your own machine. Search runs on local embeddings, so everything works offline. A backup is a file copy.</p>
+            </details>
+            <details>
+              <summary>How is it different from mem0, Zep or OpenMemory?</summary>
+              <p>Membrain is single-user and local-first by design: no accounts, no hosted service, no external vector database. One process serves the web ledger, REST API and MCP endpoint over one file — and every AI edit is staged for your review.</p>
+            </details>
           </div>
         </div>
       </section>
