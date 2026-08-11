@@ -83,17 +83,18 @@ async function main() {
   log(`membrain: REST    ${uiUrl}/api/memories`);
 
   // default behavior: open the ledger in the browser (suppress with --no-open;
-  // never inside containers/CI where there is no display)
+  // never inside containers/CI where there is no display). Fully detached —
+  // it must never block or touch the server's console.
   if (!has('--no-open') && !process.env.CI && !fs.existsSync('/.dockerenv')) {
     try {
-      const { exec } = await import('node:child_process');
-      const cmd =
+      const { spawn } = await import('node:child_process');
+      const [cmd, args] =
         process.platform === 'win32'
-          ? `start "" "${uiUrl}"`
+          ? ['cmd', ['/c', 'start', '', uiUrl]]
           : process.platform === 'darwin'
-            ? `open "${uiUrl}"`
-            : `xdg-open "${uiUrl}"`;
-      exec(cmd, () => {});
+            ? ['open', [uiUrl]]
+            : ['xdg-open', [uiUrl]];
+      spawn(cmd, args as string[], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
     } catch {}
   }
 }
