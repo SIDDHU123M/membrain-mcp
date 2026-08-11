@@ -47,11 +47,20 @@ export async function searchMemories(
     const qv = await embedder.embedQuery(query);
     const vecRows = db
       .prepare('SELECT rowid, distance FROM chunks_vec WHERE embedding MATCH ? AND k = ? ORDER BY distance')
-      .all(Buffer.from(new Float32Array(qv).buffer), BigInt(k)) as { rowid: number }[];
-    vecRows.forEach((r, rank) => {
-      scores.set(r.rowid, (scores.get(r.rowid) ?? 0) + 1 / (RRF_K + rank + 1));
-      vecHits.add(r.rowid);
-    });
+      .all(Buffer.from(new Float32Array(qv).buffer), BigInt(k)) as {
+      rowid: number;
+      distance: number;
+    }[];
+    // KNN always returns the k *nearest* rows, however far away — a nonsense
+    // query would surface whatever is least-unrelated. Floor it: unit vectors
+    // under L2 give d = sqrt(2-2cos), so d > ~1.18 means cosine < ~0.30 — noise.
+    const VEC_MAX_DISTANCE = 1.18;
+    vecRows
+      .filter((r) => r.distance <= VEC_MAX_DISTANCE)
+      .forEach((r, rank) => {
+        scores.set(r.rowid, (scores.get(r.rowid) ?? 0) + 1 / (RRF_K + rank + 1));
+        vecHits.add(r.rowid);
+      });
   }
 
   const match = ftsQuery(query);

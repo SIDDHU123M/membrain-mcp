@@ -58,3 +58,17 @@ describe('hybrid search', () => {
     expect(Array.isArray(r)).toBe(true);
   });
 });
+
+describe('relevance floor', () => {
+  it('nonsense queries return nothing instead of least-unrelated neighbors', async () => {
+    const { tempDb, fakeEmbedder } = await import('./helpers.js');
+    const { saveMemory } = await import('../src/core/memories.js');
+    const { db, cleanup } = tempDb();
+    const embedder = fakeEmbedder();
+    await saveMemory(db, embedder, { content: 'the user prefers dark themes', source: 'ui' });
+    await saveMemory(db, embedder, { content: 'aurora is a music player project', source: 'ui' });
+    const r = await searchMemories(db, embedder, { query: 'zzzz_not_a_real_term_987654321' });
+    expect(r).toEqual([]);
+    cleanup();
+  });
+});
