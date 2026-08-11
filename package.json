@@ -48,6 +48,7 @@
     "start": "node dist/server/index.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "stats": "node scripts/stats.mjs",
     "prepublishOnly": "npm run test && npm run build",
     "prepack": "node scripts/swap-readme.mjs npm",
     "postpublish": "node scripts/postpublish.mjs",
