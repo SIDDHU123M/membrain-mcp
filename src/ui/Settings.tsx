@@ -46,7 +46,7 @@ const PRESETS: Record<string, { provider: string; url: string; modelHint: string
   nvidia: {
     provider: 'openai',
     url: 'https://integrate.api.nvidia.com/v1',
-    modelHint: 'qwen/qwen3-8b',
+    modelHint: 'nvidia/llama-3.3-nemotron-super-49b-v1',
   },
   custom: { provider: 'openai', url: '', modelHint: 'model id at your endpoint' },
 };

@@ -63,14 +63,27 @@ async function apiEmbedder(url: string, model: string, apiKey?: string): Promise
  * Build the embedder chosen in settings. Local fastembed is the default and
  * needs no configuration. API provider: settings embedding_provider='api',
  * embedding_api_url, embedding_api_model, embedding_api_key?.
+ * A broken API config must never kill the boot — memory has to keep working,
+ * so it falls back to local with a loud warning instead.
  */
 export async function getEmbedder(db: DB, opts: EmbedderOptions): Promise<Embedder> {
   const provider = getSetting(db, 'embedding_provider') ?? 'local';
   if (provider === 'api') {
     const url = getSetting(db, 'embedding_api_url');
     const model = getSetting(db, 'embedding_api_model');
-    if (!url || !model) throw new Error('embedding_provider=api but embedding_api_url/model unset');
-    return apiEmbedder(url, model, getSetting(db, 'embedding_api_key'));
+    if (!url || !model) {
+      console.error(
+        '[embeddings] embedding_provider=api but embedding_api_url/model unset — falling back to local embeddings',
+      );
+    } else {
+      try {
+        return await apiEmbedder(url, model, getSetting(db, 'embedding_api_key'));
+      } catch (err) {
+        console.error(
+          `[embeddings] API embedder failed (${(err as Error).message}) — falling back to local embeddings`,
+        );
+      }
+    }
   }
   return localEmbedder(opts);
 }

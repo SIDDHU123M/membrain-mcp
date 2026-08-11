@@ -29,6 +29,15 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('insights', () => {
+  it('broken api embedding config falls back to local instead of throwing', async () => {
+    const { getEmbedder } = await import('../src/core/embeddings.js');
+    setSetting(db, 'embedding_provider', 'api'); // url/model unset
+    const e = await getEmbedder(db, { dataDir: 'data', quiet: true }).catch(() => null);
+    // must not reject; local fallback returns a working embedder
+    expect(e).not.toBeNull();
+    expect(e!.model).toContain('MiniLM');
+  });
+
   it('stripThink removes qwen-style thinking blocks', () => {
     expect(stripThink('<think>hmm\nlines</think>{"a":1}')).toBe('{"a":1}');
     expect(stripThink('plain')).toBe('plain');
