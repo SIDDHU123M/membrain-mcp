@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/membrain-logo.png" alt="Membrain" width="300" />
+<img src="https://raw.githubusercontent.com/SIDDHU123M/membrain-mcp/master/assets/membrain-logo.png" alt="Membrain" width="300" />
 
 # Membrain
 
@@ -9,8 +9,9 @@
 *A self-hosted memory ledger you run on your own machine. Your agents share it over MCP.*
 
 [![npm](https://img.shields.io/npm/v/membrain-mcp?style=flat-square&color=1e3a8a&label=npm)](https://www.npmjs.com/package/membrain-mcp)
-[![node](https://img.shields.io/badge/node-%E2%89%A520-1e3a8a?style=flat-square)](package.json)
+[![node](https://img.shields.io/badge/node-%E2%89%A520-1e3a8a?style=flat-square)](https://github.com/SIDDHU123M/membrain-mcp)
 [![MCP](https://img.shields.io/badge/protocol-MCP-1e3a8a?style=flat-square)](https://modelcontextprotocol.io)
+[![license](https://img.shields.io/badge/license-MIT-1e3a8a?style=flat-square)](https://github.com/SIDDHU123M/membrain-mcp/blob/master/LICENSE)
 [![DevLune](https://img.shields.io/badge/built%20by-DevLune-4F8EF7?style=flat-square)](https://devlune.in)
 
 </div>
@@ -48,44 +49,9 @@ npx membrain-mcp
 
 ## How it fits together
 
-```mermaid
-%%{init: {'theme':'base','themeVariables':{
-  'primaryColor':'#fdfcf7','primaryTextColor':'#1c1917','primaryBorderColor':'#1e3a8a',
-  'lineColor':'#57534e','fontFamily':'Georgia, serif','fontSize':'14px',
-  'clusterBkg':'#f4f1e8','clusterBorder':'#b8b09a','edgeLabelBackground':'#fdfcf7'
-}}}%%
-flowchart LR
-    subgraph agents ["Your agents"]
-        CC["Claude Code"]
-        CD["Claude Desktop"]
-        CU["Cursor · any MCP client"]
-    end
-    YOU(["You · browser"])
-
-    CC -- "HTTP /mcp" --> MCP
-    CU -- "HTTP /mcp" --> MCP
-    CD -- "stdio" --> MCP
-    YOU -- "web ledger + REST" --> REST
-
-    subgraph membrain ["membrain · one process"]
-        MCP["MCP server<br/>8 tools"]
-        REST["REST + web UI"]
-        CORE["core<br/>chunk · embed · hybrid search"]
-        LLM["the clerk<br/>Ollama or cloud key"]
-        MCP --> CORE
-        REST --> CORE
-        CORE -.-> LLM
-    end
-
-    CORE --> DB[("memory.db<br/>SQLite + sqlite-vec + FTS5")]
-
-    classDef agent fill:#fdfcf7,stroke:#1e3a8a,stroke-width:1.5px,color:#1c1917
-    classDef human fill:#fdfcf7,stroke:#0f766e,stroke-width:1.5px,color:#1c1917
-    classDef store fill:#1c1917,stroke:#1c1917,color:#f4f1e8
-    class CC,CD,CU agent
-    class YOU human
-    class DB store
-```
+One process serves the web ledger, the REST API, and the MCP endpoint. Agents connect over
+Streamable HTTP or stdio; everything lands in a single SQLite file with vector and full-text
+indexes. A local Ollama, or any cloud key you paste in Settings, powers the organizing features.
 
 ## Command
 

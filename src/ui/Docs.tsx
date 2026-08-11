@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Markdown } from './markdown.js';
-import connectAgentsMd from '../../docs/connect-agents.md?raw';
+import connectAgentsMd from './content/connect-agents.md?raw';
 import skillMd from '../../skills/membrain/SKILL.md?raw';
 
 const QUICKSTART = `

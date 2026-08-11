@@ -5,3 +5,10 @@ local_cache/
 *.log
 site-dist/
 README.github.md.bak
+
+# local-only: product spec + working notes
+docs/
+CLAUDE.md
+claude-resume.txt
+RECOMMENDATIONS.md
+ROADMAP.md
