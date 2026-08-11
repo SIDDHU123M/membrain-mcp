@@ -37,7 +37,10 @@
     "start": "node dist/server/index.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run test && npm run build"
+    "prepublishOnly": "npm run test && npm run build",
+    "prepack": "node scripts/swap-readme.mjs npm",
+    "postpack": "node scripts/swap-readme.mjs restore",
+    "export:landing": "npm run build && node scripts/export-landing.mjs"
   },
   "dependencies": {
     "@fastify/multipart": "^9.0.0",

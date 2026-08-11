@@ -3,3 +3,5 @@ dist/
 data/
 local_cache/
 *.log
+site-dist/
+README.github.md.bak

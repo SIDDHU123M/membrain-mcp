@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   root: 'src/ui',
+  base: './', // relative asset URLs — pages work at any mount path (subfolders, Pages hosts)
   plugins: [react(), tailwindcss()],
   build: {
     outDir: '../../dist/ui',
