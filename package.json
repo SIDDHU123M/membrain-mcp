@@ -1,6 +1,6 @@
 {
   "name": "membrain-mcp",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Self-hosted AI memory ledger. You and your agents share one memory store over MCP — one SQLite file, web UI, REST, works offline.",
   "keywords": [
     "mcp",
