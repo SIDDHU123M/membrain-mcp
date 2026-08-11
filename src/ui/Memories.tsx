@@ -394,6 +394,10 @@ export default function Memories({
     view: SavedSummary | null;
     error?: string;
   } | null>(null);
+  // the docket: review, search, and tick exactly what an AI operation may read
+  const [picker, setPicker] = useState<{ op: 'map' | 'mapNew' | 'titles' | 'summary'; label: string; elig: Memory[] } | null>(null);
+  const [pickQ, setPickQ] = useState('');
+  const [picked, setPicked] = useState<Set<number>>(new Set());
   const [aiOp, setAiOp] = useState<AiOp>(null);
   const [aiStatus, setAiStatus] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number; label: string } | null>(
@@ -438,13 +442,17 @@ export default function Memories({
     }
   }, [jumpMemory, onJumpConsumed]);
 
-  // Esc closes the summary drawer (the memory drawer handles its own)
+  // Esc closes the summary drawer / docket (the memory drawer handles its own)
   useEffect(() => {
-    if (!sumDrawer) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSumDrawer(null);
+    if (!sumDrawer && !picker) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setSumDrawer(null);
+      setPicker(null);
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [sumDrawer]);
+  }, [sumDrawer, picker]);
 
   // [[wikilink]] clicked anywhere markdown renders → recall that name
   useEffect(() => {
@@ -543,12 +551,12 @@ export default function Memories({
   // which brain is on duty — shown whenever the clerk is working
   const [llmInfo, setLlmInfo] = useState<{ provider: string; model: string } | null>(null);
   useEffect(() => {
-    if (!aiOp || llmInfo) return;
+    if ((!aiOp && !picker) || llmInfo) return;
     void api
       .llmInfo()
       .then((r) => setLlmInfo(r.llm))
       .catch(() => {});
-  }, [aiOp, llmInfo]);
+  }, [aiOp, picker, llmInfo]);
 
   const visible = useMemo(() => {
     let v = memories;
@@ -634,12 +642,33 @@ export default function Memories({
     }
   };
 
+  const openPicker = (op: 'map' | 'mapNew' | 'titles' | 'summary', label: string, elig: Memory[]) => {
+    setPicked(new Set(elig.map((m) => m.id)));
+    setPickQ('');
+    setPicker({ op, label, elig });
+  };
+
+  const proceedPicker = () => {
+    if (!picker || picked.size === 0) return;
+    const ids = [...picked];
+    const partial = ids.length !== picker.elig.length;
+    setPicker(null);
+    if (picker.op === 'map') runMap(false, partial ? ids : undefined);
+    if (picker.op === 'mapNew') runMap(true, partial ? ids : undefined);
+    if (picker.op === 'titles') runTitles(ids);
+    if (picker.op === 'summary')
+      void runSummary(ids, partial ? `${ids.length} picked` : picker.label);
+  };
+
   /* live SSE ops — the clerk reports as it works */
-  const runMap = (onlyNew = false) => {
+  const runMap = (onlyNew = false, ids?: number[]) => {
     setAiOp('map');
     setNotice(null);
     setAiStatus(onlyNew ? 'Filing new entries into existing topics…' : 'Filing memories into topics…');
-    const es = new EventSource(`/api/insights/map/stream${onlyNew ? '?mode=update' : ''}`);
+    const params = new URLSearchParams();
+    if (onlyNew) params.set('mode', 'update');
+    if (ids?.length) params.set('ids', ids.join(','));
+    const es = new EventSource(`/api/insights/map/stream${params.size ? `?${params}` : ''}`);
     esRef.current = es;
     es.addEventListener('progress', (e) => {
       const p = JSON.parse((e as MessageEvent).data) as {
@@ -671,11 +700,13 @@ export default function Memories({
     });
   };
 
-  const runTitles = () => {
+  const runTitles = (ids?: number[]) => {
     setAiOp('titles');
     setNotice(null);
     setAiStatus('Drafting titles…');
-    const es = new EventSource('/api/insights/titles/stream');
+    const es = new EventSource(
+      `/api/insights/titles/stream${ids?.length ? `?ids=${ids.join(',')}` : ''}`,
+    );
     esRef.current = es;
     es.addEventListener('progress', (e) => {
       const p = JSON.parse((e as MessageEvent).data) as {
@@ -956,13 +987,17 @@ export default function Memories({
             )}
           </div>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
-            <button className="btn-primary" onClick={() => runMap(false)} disabled={aiOp !== null}>
+            <button
+              className="btn-primary"
+              onClick={() => openPicker('map', map ? 'Reorganize' : 'Organize', memories.filter((m) => !m.sealed && !m.archived))}
+              disabled={aiOp !== null}
+            >
               {map ? 'Reorganize' : 'Organize'}
             </button>
             {map && map.stale && (
               <button
                 className="btn"
-                onClick={() => runMap(true)}
+                onClick={() => openPicker('mapNew', 'File new entries', memories.filter((m) => !m.sealed && !m.archived))}
                 disabled={aiOp !== null}
                 title="File only entries the map has never seen into the existing topics — much faster than a full reorganize"
               >
@@ -971,13 +1006,24 @@ export default function Memories({
             )}
             <button
               className="btn"
-              onClick={runTitles}
+              onClick={() => openPicker('titles', 'Draft titles', memories.filter((m) => !m.sealed && !m.archived && !m.title))}
               disabled={aiOp !== null || untitled === 0}
               title="Draft a short title for every untitled entry — you review before anything is written"
             >
               Titles
             </button>
-            <button className="btn" onClick={() => void runSummary()} disabled={aiOp !== null}>
+            <button
+              className="btn"
+              onClick={() => {
+                const ids = scope.ids ? new Set(scope.ids) : null;
+                openPicker(
+                  'summary',
+                  scope.label,
+                  memories.filter((m) => !m.sealed && !m.archived && (!ids || ids.has(m.id))),
+                );
+              }}
+              disabled={aiOp !== null}
+            >
               Summarize {scope.label}
             </button>
             {summaries.length > 0 && (
@@ -1441,7 +1487,13 @@ export default function Memories({
                   >
                     Open
                   </button>
-                  <button className="btn" onClick={() => void runSummary(c.ids, c.name)}>
+                  <button
+                    className="btn"
+                    onClick={() => {
+                      const ids = new Set(c.ids);
+                      openPicker('summary', c.name, memories.filter((m) => ids.has(m.id) && !m.sealed && !m.archived));
+                    }}
+                  >
                     Summarize
                   </button>
                 </div>
@@ -1579,6 +1631,25 @@ export default function Memories({
                 )}
                 <Stamp source={m.source} />
                 <span
+                  role="button"
+                  tabIndex={0}
+                  className="shrink-0 cursor-pointer px-1 text-[15px] leading-none text-[var(--text-3)] hover:text-[var(--text)]"
+                  title="Entry actions"
+                  aria-label={`Actions for entry ${m.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCtx(e, m);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.stopPropagation();
+                      openCtx(e as unknown as React.MouseEvent, m);
+                    }
+                  }}
+                >
+                  ⋯
+                </span>
+                <span
                   className="shrink-0 whitespace-nowrap text-right text-[11px] text-[var(--text-3)]"
                   title={new Date(m.created_at).toLocaleString()}
                 >
@@ -1600,6 +1671,99 @@ export default function Memories({
         />
       )}
 
+      {picker && (
+        <>
+          <div className="drawer-scrim" onClick={() => setPicker(null)} aria-hidden="true" />
+          <aside className="drawer" role="dialog" aria-modal="true" aria-label="Review before sending to AI">
+            <header className="flex items-center gap-3 border-b border-[var(--line)] px-6 py-4">
+              <span className="label">Before the clerk reads</span>
+              <span className="chip">{picker.label}</span>
+              {llmInfo && (
+                <span className="chip" title="The brain that will process these entries">
+                  {llmInfo.provider} · {llmInfo.model}
+                </span>
+              )}
+              <button
+                className="ml-auto cursor-pointer text-[18px] leading-none text-[var(--text-3)] hover:text-[var(--text)]"
+                onClick={() => setPicker(null)}
+                aria-label="Cancel"
+              >
+                ✕
+              </button>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+              <p className="text-[12.5px] leading-5 text-[var(--text-2)]">
+                These {picker.elig.length} entries will be sent to the model. Untick anything you'd
+                rather keep out of this run
+                {sealedCount > 0
+                  ? `; your ${sealedCount} sealed ${sealedCount === 1 ? 'entry is' : 'entries are'} already excluded.`
+                  : '. To exclude an entry from every AI operation permanently, seal it (right-click → Seal).'}
+              </p>
+
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  className="input"
+                  placeholder="Search these entries…"
+                  value={pickQ}
+                  onChange={(e) => setPickQ(e.target.value)}
+                  aria-label="Filter entries"
+                />
+                <button className="btn shrink-0" onClick={() => setPicked(new Set(picker.elig.map((m) => m.id)))}>
+                  All
+                </button>
+                <button className="btn shrink-0" onClick={() => setPicked(new Set())}>
+                  None
+                </button>
+              </div>
+
+              <div className="rowlist mt-3">
+                {picker.elig
+                  .filter(
+                    (m) =>
+                      !pickQ.trim() ||
+                      m.content.toLowerCase().includes(pickQ.toLowerCase()) ||
+                      (m.title ?? '').toLowerCase().includes(pickQ.toLowerCase()) ||
+                      m.tags.some((t) => t.toLowerCase().includes(pickQ.toLowerCase())),
+                  )
+                  .map((m) => (
+                    <label key={m.id} className="flex cursor-pointer items-center gap-2.5 py-1.5">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-[#1e3a8a]"
+                        checked={picked.has(m.id)}
+                        onChange={() =>
+                          setPicked((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(m.id)) next.delete(m.id);
+                            else next.add(m.id);
+                            return next;
+                          })
+                        }
+                      />
+                      <span className="mono text-[10.5px] text-[var(--text-3)]">
+                        #{String(m.id).padStart(3, '0')}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[13px]">{heading(m)}</span>
+                      <Stamp source={m.source} />
+                    </label>
+                  ))}
+              </div>
+            </div>
+
+            <footer className="flex items-center gap-2 border-t border-[var(--line)] px-6 py-3.5">
+              <button className="btn-primary" onClick={proceedPicker} disabled={picked.size === 0}>
+                Process {picked.size} of {picker.elig.length}
+              </button>
+              <button className="btn" onClick={() => setPicker(null)}>
+                Cancel
+              </button>
+              <span className="ml-auto text-[11px] text-[var(--text-3)]">nothing is sent until you press Process</span>
+            </footer>
+          </aside>
+        </>
+      )}
+
       {sumDrawer && (
         <>
           <div className="drawer-scrim" onClick={() => setSumDrawer(null)} aria-hidden="true" />
@@ -1617,6 +1781,25 @@ export default function Memories({
             </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              {!sumDrawer.running && summaries.length > 1 && (
+                <div className="mb-4">
+                  <label className="label mb-1.5">Browse summaries</label>
+                  <select
+                    className="input"
+                    value={sumDrawer.view?.id ?? ''}
+                    onChange={(e) => {
+                      const sSel = summaries.find((x) => x.id === e.target.value);
+                      if (sSel) setSumDrawer({ running: false, label: sSel.label, ids: sSel.ids, view: sSel });
+                    }}
+                  >
+                    {summaries.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.label} — {x.count} entries — {relativeTime(x.at)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {sumDrawer.running ? (
                 <div className="flex items-center gap-3 py-6" role="status">
                   <span className="relative flex h-2 w-2 shrink-0">
@@ -1688,31 +1871,6 @@ export default function Memories({
                 </>
               ) : null}
 
-              {summaries.length > 0 && (
-                <div className="mt-6 border-t border-[var(--line)] pt-4">
-                  <span className="label">Earlier summaries</span>
-                  <div className="rowlist mt-1.5">
-                    {summaries.map((s) => (
-                      <button
-                        key={s.id}
-                        className="flex w-full cursor-pointer items-baseline gap-2.5 py-2 text-left"
-                        onClick={() =>
-                          setSumDrawer({ running: false, label: s.label, ids: s.ids, view: s })
-                        }
-                        aria-current={sumDrawer.view?.id === s.id ? 'true' : undefined}
-                      >
-                        <span className={`text-[13px] ${sumDrawer.view?.id === s.id ? 'font-semibold' : ''}`}>
-                          {s.label}
-                        </span>
-                        <span className="leader-dots" aria-hidden="true" />
-                        <span className="mono shrink-0 text-[10.5px] text-[var(--text-3)]">
-                          {s.count} entries · {relativeTime(s.at)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </aside>
         </>
@@ -1720,8 +1878,10 @@ export default function Memories({
 
       {ctxMenu && (
         <div
-          className="card fixed z-50 w-[185px] py-1"
-          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          className="card z-50 w-[185px] py-1"
+          // inline position: the .card class sets position:relative later in the
+          // cascade than Tailwind's fixed utility — inline is the only safe winner
+          style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y }}
           role="menu"
           aria-label={`Entry ${ctxMenu.m.id} actions`}
           onContextMenu={(e) => e.preventDefault()}

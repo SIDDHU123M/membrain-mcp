@@ -55,7 +55,7 @@ let mapBuilding = false;
 export async function buildMemoryMap(
   db: DB,
   onProgress?: (p: MapProgress) => void,
-  opts: { onlyNew?: boolean } = {},
+  opts: { onlyNew?: boolean; ids?: number[] } = {},
 ): Promise<MemoryMap> {
   if (mapBuilding) throw new OllamaError('a map build is already running');
   const cfg = await ollamaConfig(db);
@@ -67,6 +67,11 @@ export async function buildMemoryMap(
     .prepare('SELECT id, content FROM memories WHERE archived = 0 AND sealed = 0 ORDER BY id DESC LIMIT ?')
     .all(MAP_CAP) as { id: number; content: string }[];
   if (cached) rows = rows.filter((r) => !known.has(r.id));
+  // the docket: user picked exactly which entries may go to the model
+  if (opts.ids && opts.ids.length > 0) {
+    const allow = new Set(opts.ids);
+    rows = rows.filter((r) => allow.has(r.id));
+  }
   if (rows.length === 0) {
     if (cached) {
       // nothing new — just refresh the staleness hash

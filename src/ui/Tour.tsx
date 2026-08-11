@@ -161,8 +161,12 @@ export default function Tour({
       />
 
       <div
-        className="card fixed z-10 max-h-[min(82vh,36rem)] overflow-y-auto p-4 sm:p-5"
-        style={{ ...cardStyle, transition: 'top 0.4s cubic-bezier(0.33,1,0.68,1), left 0.4s cubic-bezier(0.33,1,0.68,1)' }}
+        className="card z-10 max-h-[min(82vh,36rem)] overflow-y-auto p-4 sm:p-5"
+        style={{
+          ...cardStyle,
+          position: 'fixed', // .card sets position:relative later in the cascade
+          transition: 'top 0.4s cubic-bezier(0.33,1,0.68,1), left 0.4s cubic-bezier(0.33,1,0.68,1)',
+        }}
       >
         <div className="rule-double" aria-hidden="true" />
         <div className="flex items-baseline gap-3 pt-3">

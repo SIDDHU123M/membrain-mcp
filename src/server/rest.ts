@@ -121,7 +121,7 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
 
   app.patch<{
     Params: { id: string };
-    Body: { content?: string; tags?: string[]; pinned?: boolean; archived?: boolean };
+    Body: { content?: string; tags?: string[]; pinned?: boolean; archived?: boolean; sealed?: boolean };
   }>('/api/memories/:id', async (req) => updateMemory(db, embedder, Number(req.params.id), req.body ?? {}));
 
   app.delete<{ Params: { id: string } }>('/api/memories/:id', async (req) => {
@@ -255,11 +255,13 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     });
   });
 
-  app.get<{ Querystring: { mode?: string } }>('/api/insights/map/stream', async (req, reply) => {
+  app.get<{ Querystring: { mode?: string; ids?: string } }>('/api/insights/map/stream', async (req, reply) => {
     const s = sseStart(reply);
+    const ids = req.query.ids?.split(',').map(Number).filter(Number.isInteger);
     try {
       const map = await buildMemoryMap(db, (p) => s.send('progress', p), {
         onlyNew: req.query.mode === 'update',
+        ids: ids?.length ? ids : undefined,
       });
       s.send('done', map);
     } catch (err) {
@@ -269,10 +271,11 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     s.end();
   });
 
-  app.get('/api/insights/titles/stream', async (_req, reply) => {
+  app.get<{ Querystring: { ids?: string } }>('/api/insights/titles/stream', async (req, reply) => {
     const s = sseStart(reply);
+    const ids = req.query.ids?.split(',').map(Number).filter(Number.isInteger);
     try {
-      const proposed = await proposeTitles(db, (p) => s.send('progress', p));
+      const proposed = await proposeTitles(db, (p) => s.send('progress', p), ids?.length ? ids : undefined);
       s.send('done', { proposed });
     } catch (err) {
       console.error(`[ai] titles failed: ${(err as Error).message}`);
