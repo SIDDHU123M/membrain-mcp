@@ -293,7 +293,7 @@ export default function MindMap({
                     key={n.id}
                     transform={`translate(${p.x},${p.y})`}
                     opacity={dim ? 0.22 : 1}
-                    className="cursor-grab active:cursor-grabbing"
+                    className="cursor-pointer active:cursor-grabbing"
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       nodeDrag.current = { id: n.id, moved: false };
