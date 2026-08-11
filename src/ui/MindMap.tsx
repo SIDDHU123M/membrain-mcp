@@ -10,7 +10,8 @@ import {
   type SimulationNodeDatum,
 } from 'd3-force';
 import { api, type Memory, type MindMap as MindMapData, type MindMapNode } from './api.js';
-import { kindColor, relativeTime } from './util.js';
+import { kindColor, relativeTime, sourceColor, sourceLabel } from './util.js';
+import { Markdown } from './markdown.js';
 
 interface Pos {
   x: number;
@@ -35,7 +36,11 @@ function seed(id: string): Pos {
 
 const KINDS = ['person', 'project', 'tool', 'preference', 'topic', 'fact'] as const;
 
-export default function MindMap() {
+export default function MindMap({
+  onOpenMemory,
+}: {
+  onOpenMemory?: (m: Memory) => void;
+}) {
   const [map, setMap] = useState<MindMapData | null>(null);
   const [building, setBuilding] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -382,18 +387,40 @@ export default function MindMap() {
                   })}
               </ul>
             )}
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 space-y-2.5">
+              <span className="label">
+                Entries behind this ({selected.memoryIds.length})
+              </span>
               {nodeMemories.map((m) => (
-                <div
-                  key={m.id}
-                  className="rounded-[10px] border border-[var(--line)] bg-[var(--inset)] px-3 py-2"
-                >
+                <div key={m.id} className="border border-[var(--line)] bg-[var(--inset)] p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="mono text-[10px] text-[var(--text-3)]">
+                      #{String(m.id).padStart(3, '0')}
+                    </span>
+                    <span className="stamp" style={{ color: sourceColor(m.source) }}>
+                      {sourceLabel(m.source)}
+                    </span>
+                    {onOpenMemory && (
+                      <button
+                        className="btn ml-auto px-2 py-0.5 text-[10px]"
+                        onClick={() => onOpenMemory(m)}
+                      >
+                        Open entry →
+                      </button>
+                    )}
+                  </div>
                   {m.title && (
-                    <div className="display mb-0.5 text-[12px] font-semibold">{m.title}</div>
+                    <div className="display mt-1.5 text-[13px] font-semibold">{m.title}</div>
                   )}
-                  <p className="line-clamp-3 text-[12px] leading-5 text-[var(--text-2)]">
-                    {m.content}
-                  </p>
+                  {/* memories are often markdown (agent imports) — render, don't dump */}
+                  <div className="relative mt-1 max-h-36 overflow-hidden">
+                    <Markdown text={m.content} />
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-8"
+                      style={{ background: 'linear-gradient(transparent, var(--surface))' }}
+                      aria-hidden="true"
+                    />
+                  </div>
                 </div>
               ))}
               {selected.memoryIds.length === 0 && (

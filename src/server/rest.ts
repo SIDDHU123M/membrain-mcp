@@ -36,6 +36,7 @@ import {
   buildMindMap,
   getCachedMap,
   getCachedMindMap,
+  getLastSummary,
   getProposals,
   proposeTitles,
   resolveProposals,
@@ -267,6 +268,8 @@ export function registerRest(app: FastifyInstance, ctx: Ctx): void {
     }
     return resolveProposals(db, ids, accept === true);
   });
+
+  app.get('/api/insights/summary', async () => ({ summary: getLastSummary(db) }));
 
   app.post<{ Body: { ids?: number[] } }>('/api/insights/summary', async (req) => {
     const ids = req.body?.ids;

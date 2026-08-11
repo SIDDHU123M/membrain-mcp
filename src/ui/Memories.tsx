@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, type MapCategory, type Memory, type MemoryMap, type Proposal } from './api.js';
 import { relativeTime, sourceColor, sourceLabel } from './util.js';
+import { Markdown } from './markdown.js';
 
 const parseTags = (s: string) =>
   s
@@ -162,7 +163,8 @@ function Drawer({
               </div>
             </div>
           ) : (
-            <p className="whitespace-pre-wrap text-[15px] leading-[1.75]">{memory.content}</p>
+            // agent-written memories are frequently markdown — render it
+            <Markdown text={memory.content} />
           )}
 
           <dl className="mt-6 space-y-1.5 border-t border-[var(--line)] pt-4 text-[12.5px] text-[var(--text-2)]">
@@ -314,7 +316,15 @@ interface ReviewFact {
   checked: boolean;
 }
 
-export default function Memories({ onStatsDirty }: { onStatsDirty: () => void }) {
+export default function Memories({
+  onStatsDirty,
+  jumpMemory,
+  onJumpConsumed,
+}: {
+  onStatsDirty: () => void;
+  jumpMemory?: Memory | null;
+  onJumpConsumed?: () => void;
+}) {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState<string | null>(null);
@@ -324,7 +334,8 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
   const [category, setCategory] = useState<MapCategory | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [drawer, setDrawer] = useState<Memory | null>(null);
-  const [summary, setSummary] = useState<string | null>(null);
+  const [summary, setSummary] = useState<{ text: string; at: string } | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
   const [aiOp, setAiOp] = useState<AiOp>(null);
   const [aiStatus, setAiStatus] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number; label: string } | null>(
@@ -361,6 +372,14 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
 
   useEffect(() => () => esRef.current?.close(), []);
 
+  // arriving from the atlas: open the requested entry in the drawer
+  useEffect(() => {
+    if (jumpMemory) {
+      setDrawer(jumpMemory);
+      onJumpConsumed?.();
+    }
+  }, [jumpMemory, onJumpConsumed]);
+
   const load = useCallback(async () => {
     setMemories(await api.memories({ query: query || undefined, tag: tag ?? undefined }));
     onStatsDirty();
@@ -381,6 +400,11 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
     void api
       .map()
       .then((r) => setMap(r.map))
+      .catch(() => {});
+    // the last summary survives restarts — offered collapsed
+    void api
+      .lastSummary()
+      .then((r) => r.summary && setSummary({ text: r.summary.text, at: r.summary.at }))
       .catch(() => {});
   }, [loadProposals]);
 
@@ -557,7 +581,8 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
     setNotice(null);
     try {
       const r = await api.summarize(ids ?? scope.ids);
-      setSummary(r.summary);
+      setSummary({ text: r.summary, at: new Date().toISOString() });
+      setShowSummary(true);
       setAiStatus(null);
     } catch (e) {
       setAiStatus(null);
@@ -773,17 +798,23 @@ export default function Memories({ onStatsDirty }: { onStatsDirty: () => void })
           {progress && <ProgressBar {...progress} />}
           {summary && (
             <div className="basis-full">
-              <div className="card flex items-start gap-3 px-4 py-3">
-                <p className="flex-1 whitespace-pre-wrap text-[13.5px] leading-6 text-[var(--text-2)]">
-                  {summary}
-                </p>
-                <button
-                  className="cursor-pointer text-[var(--text-3)] hover:text-[var(--text)]"
-                  onClick={() => setSummary(null)}
-                  aria-label="Dismiss summary"
-                >
-                  ✕
-                </button>
+              <div className="card px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="label">Summary</span>
+                  <span className="text-[11px] text-[var(--text-3)]">{relativeTime(summary.at)}</span>
+                  <button
+                    className="btn ml-auto px-2 py-0.5 text-[10px]"
+                    onClick={() => setShowSummary((v) => !v)}
+                    aria-expanded={showSummary}
+                  >
+                    {showSummary ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {showSummary && (
+                  <div className="mt-2 border-t border-[var(--line)] pt-2">
+                    <Markdown text={summary.text} />
+                  </div>
+                )}
               </div>
             </div>
           )}

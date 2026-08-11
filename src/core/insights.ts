@@ -371,6 +371,17 @@ export async function buildMindMap(db: DB): Promise<MindMap> {
   return map;
 }
 
+export interface SavedSummary {
+  text: string;
+  count: number;
+  at: string;
+}
+
+export function getLastSummary(db: DB): SavedSummary | null {
+  const raw = getSetting(db, 'last_summary');
+  return raw ? (JSON.parse(raw) as SavedSummary) : null;
+}
+
 /** Summarize the whole store, or just the given memory ids. */
 export async function summarizeMemories(db: DB, ids?: number[]): Promise<string> {
   const cfg = await ollamaConfig(db);
@@ -386,7 +397,7 @@ export async function summarizeMemories(db: DB, ids?: number[]): Promise<string>
   ) as { id: number; content: string }[];
   if (rows.length === 0) throw new OllamaError('nothing to summarize');
 
-  return ollamaGenerate(
+  const text = await ollamaGenerate(
     cfg,
     'Summarize this personal memory store for its owner. Lead with a one-sentence overall picture, ' +
       'then the key themes as short plain lines (no markdown syntax), concrete and specific. Under 150 words.\n\n' +
@@ -394,4 +405,6 @@ export async function summarizeMemories(db: DB, ids?: number[]): Promise<string>
       rows.map((r) => `- ${r.content.replace(/\s+/g, ' ').slice(0, 300)}`).join('\n'),
     { timeoutMs: 300_000 },
   );
+  setSetting(db, 'last_summary', JSON.stringify({ text, count: rows.length, at: new Date().toISOString() }));
+  return text;
 }

@@ -176,6 +176,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ ids: ids ?? [] }),
     }),
+  lastSummary: () =>
+    req<{ summary: { text: string; count: number; at: string } | null }>('/api/insights/summary'),
   testLlm: () =>
     req<{ ok: boolean; provider: string; model: string }>('/api/llm/test', {
       method: 'POST',

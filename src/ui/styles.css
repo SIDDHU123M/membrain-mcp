@@ -447,6 +447,15 @@ code.pill {
   border-top: 1px solid var(--line);
 }
 
+/* the tour points at a rail item by lifting it above the veil and ringing it */
+.tour-glow {
+  position: relative;
+  z-index: 61;
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+  background: var(--surface);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;

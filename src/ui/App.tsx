@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, type Stats } from './api.js';
 import { prettyBytes } from './util.js';
 import logo from './assets/membrain-logo.png';
+import type { Memory } from './api.js';
 import Memories from './Memories.js';
 import MindMap from './MindMap.js';
 import Skills from './Skills.js';
 import AgentImport from './AgentImport.js';
 import Docs from './Docs.js';
 import Settings from './Settings.js';
+import Tour, { tourPending } from './Tour.js';
 
 const TABS = [
   { no: '01', name: 'Memories' },
@@ -23,6 +25,14 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('Memories');
   const [stats, setStats] = useState<Stats | null>(null);
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme ?? 'light');
+  const [touring, setTouring] = useState(() => tourPending());
+  const [tourTab, setTourTab] = useState<string | null>(null);
+  const [jumpMemory, setJumpMemory] = useState<Memory | null>(null);
+
+  const openMemory = useCallback((m: Memory) => {
+    setJumpMemory(m);
+    setTab('Memories');
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -79,7 +89,7 @@ export default function App() {
               key={t.name}
               onClick={() => setTab(t.name)}
               aria-current={tab === t.name ? 'page' : undefined}
-              className="rail-item shrink-0 md:shrink"
+              className={`rail-item shrink-0 md:shrink ${touring && tourTab === t.name ? 'tour-glow' : ''}`}
             >
               <span className="rail-no">{t.no}</span>
               <span>{t.name}</span>
@@ -123,13 +133,33 @@ export default function App() {
       </aside>
 
       <main id="main" className="min-w-0 px-4 pb-24 pt-6 md:px-8 md:pt-10">
-        {tab === 'Memories' && <Memories onStatsDirty={refreshStats} />}
-        {tab === 'Map' && <MindMap />}
+        {tab === 'Memories' && (
+          <Memories
+            onStatsDirty={refreshStats}
+            jumpMemory={jumpMemory}
+            onJumpConsumed={() => setJumpMemory(null)}
+          />
+        )}
+        {tab === 'Map' && <MindMap onOpenMemory={openMemory} />}
         {tab === 'Skills' && <Skills />}
         {tab === 'Agent Import' && <AgentImport onImported={refreshStats} />}
         {tab === 'Docs' && <Docs />}
         {tab === 'Settings' && <Settings />}
       </main>
+
+      {touring && (
+        <Tour
+          onTab={(t) => {
+            setTab(t as Tab);
+            setTourTab(t);
+          }}
+          onClose={() => {
+            setTouring(false);
+            setTourTab(null);
+            setTab('Memories');
+          }}
+        />
+      )}
     </div>
   );
 }

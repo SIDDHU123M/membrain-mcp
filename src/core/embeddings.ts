@@ -37,25 +37,32 @@ async function localEmbedder(opts: EmbedderOptions): Promise<Embedder> {
 }
 
 async function apiEmbedder(url: string, model: string, apiKey?: string): Promise<Embedder> {
-  async function embed(texts: string[]): Promise<number[][]> {
-    const res = await fetch(new URL('embeddings', url.endsWith('/') ? url : url + '/'), {
+  const endpoint = new URL('embeddings', url.endsWith('/') ? url : url + '/');
+  async function call(body: Record<string, unknown>): Promise<Response> {
+    return fetch(endpoint, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
       },
-      body: JSON.stringify({ input: texts, model }),
+      body: JSON.stringify(body),
     });
+  }
+  async function embed(texts: string[], kind: 'passage' | 'query'): Promise<number[][]> {
+    // standard OpenAI shape first; some providers (NVIDIA retriever models)
+    // refuse without input_type, so retry once with it
+    let res = await call({ input: texts, model });
+    if (!res.ok) res = await call({ input: texts, model, input_type: kind });
     if (!res.ok) throw new Error(`embedding API ${res.status}: ${await res.text()}`);
     const json = (await res.json()) as { data: { index: number; embedding: number[] }[] };
     return json.data.sort((a, b) => a.index - b.index).map((d) => d.embedding);
   }
-  const [probe] = await embed(['dim probe']);
+  const [probe] = await embed(['dim probe'], 'passage');
   return {
     model: `api:${model}`,
     dim: probe.length,
-    embed,
-    embedQuery: async (text) => (await embed([text]))[0],
+    embed: (texts) => embed(texts, 'passage'),
+    embedQuery: async (text) => (await embed([text], 'query'))[0],
   };
 }
 
