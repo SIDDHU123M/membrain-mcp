@@ -8,10 +8,10 @@
 
 *A self-hosted memory ledger you run on your own machine. Your agents share it over MCP.*
 
-[![npm](https://img.shields.io/npm/v/membrain-mcp?style=flat-square&color=1e3a8a&label=npm)](https://www.npmjs.com/package/membrain-mcp)
-[![node](https://img.shields.io/badge/node-%E2%89%A520-1e3a8a?style=flat-square)](package.json)
-[![MCP](https://img.shields.io/badge/protocol-MCP-1e3a8a?style=flat-square)](https://modelcontextprotocol.io)
-[![DevLune](https://img.shields.io/badge/built%20by-DevLune-4F8EF7?style=flat-square)](https://devlune.in)
+[![npm](https://img.shields.io/npm/v/membrain-mcp?style=flat-square&color=1c1917&label=npm)](https://www.npmjs.com/package/membrain-mcp)
+[![node](https://img.shields.io/badge/node-%E2%89%A520-1c1917?style=flat-square)](package.json)
+[![MCP](https://img.shields.io/badge/protocol-MCP-1c1917?style=flat-square)](https://modelcontextprotocol.io)
+[![DevLune](https://img.shields.io/badge/built%20by-DevLune-1c1917?style=flat-square)](https://devlune.in)
 
 </div>
 
@@ -22,6 +22,10 @@ Claude Desktop, Cursor, anything that speaks the protocol. What one remembers, a
 
 Everything lives in **one SQLite file** on your disk. No accounts, no cloud, no telemetry. Works
 fully offline.
+
+Don't want to run anything? The same ledger exists as a **free hosted version** at
+[membrain.devlune.in](https://membrain.devlune.in/login) — see
+[Hosted or self-hosted](#hosted-or-self-hosted) below.
 
 ## Install
 
@@ -46,11 +50,30 @@ Prefer not to install globally? One-shot from any folder:
 npx membrain-mcp
 ```
 
+## Hosted or self-hosted
+
+Same ledger, same web UI, same eight MCP tools — the difference is whose machine it runs on.
+Exports are interchangeable: a cloud JSON export imports straight into a self-hosted ledger, and
+vice versa.
+
+|  | Self-hosted (the flagship) | Hosted — [membrain.devlune.in](https://membrain.devlune.in/login) |
+|---|---|---|
+| Setup | `npm i -g membrain-mcp`, run `membrain` | Sign in — email, GitHub, or Google |
+| Where data lives | One SQLite file on your disk | Cloudflare D1, encrypted at rest |
+| Offline | Fully | No — it's a website |
+| Search | Local embeddings + FTS5, hybrid RRF | Workers AI embeddings + FTS5, same recipe |
+| The clerk (AI ops) | Local Ollama, or your own API key | Workers AI, or your own API key |
+| Agents connect to | `http://127.0.0.1:7777/mcp` (localhost, no auth) | `https://membrain.devlune.in/mcp` + API key from the Integrations page |
+| Privacy | Nothing ever leaves your machine | [Plain-words policy](https://membrain.devlune.in/privacy) — encrypted at rest, not zero-knowledge |
+| Price | Free forever, MIT | Free |
+
+Sealed entries, staged agent writes, and the proposal queue behave identically in both.
+
 ## How it fits together
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{
-  'primaryColor':'#fdfcf7','primaryTextColor':'#1c1917','primaryBorderColor':'#1e3a8a',
+  'primaryColor':'#fdfcf7','primaryTextColor':'#1c1917','primaryBorderColor':'#1c1917',
   'lineColor':'#57534e','fontFamily':'Georgia, serif','fontSize':'14px',
   'clusterBkg':'#f4f1e8','clusterBorder':'#b8b09a','edgeLabelBackground':'#fdfcf7'
 }}}%%
@@ -79,7 +102,7 @@ flowchart LR
 
     CORE --> DB[("memory.db<br/>SQLite + sqlite-vec + FTS5")]
 
-    classDef agent fill:#fdfcf7,stroke:#1e3a8a,stroke-width:1.5px,color:#1c1917
+    classDef agent fill:#fdfcf7,stroke:#1c1917,stroke-width:1.5px,color:#1c1917
     classDef human fill:#fdfcf7,stroke:#0f766e,stroke-width:1.5px,color:#1c1917
     classDef store fill:#1c1917,stroke:#1c1917,color:#f4f1e8
     class CC,CD,CU agent

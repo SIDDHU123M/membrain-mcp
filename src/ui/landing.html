@@ -6,7 +6,7 @@
     <title>Membrain — Self-Hosted AI Memory Server for MCP Agents | One Memory, Every AI</title>
     <meta
       name="description"
-      content="Membrain is a free, open-source, self-hosted memory server for AI agents. Claude, Cursor and any MCP client share one memory — one SQLite file on your machine, web UI included, works offline. npm i -g membrain-mcp"
+      content="Membrain is a free, open-source memory server for AI agents. Claude, Cursor and any MCP client share one memory — self-host it (one SQLite file, works offline) or use the free hosted ledger. npm i -g membrain-mcp"
     />
     <link rel="canonical" href="https://membrain.devlune.in/" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
@@ -93,7 +93,12 @@
             {
               "@type": "Question",
               "name": "How is Membrain different from mem0, Zep or OpenMemory?",
-              "acceptedAnswer": { "@type": "Answer", "text": "Membrain is single-user and local-first by design: no accounts, no hosted service, no external vector database. One process serves the web ledger, REST API and MCP endpoint over one SQLite file, and every AI edit is staged for your review." }
+              "acceptedAnswer": { "@type": "Answer", "text": "Membrain is single-user and local-first by design: no accounts or hosted service required, no external vector database. One process serves the web ledger, REST API and MCP endpoint over one SQLite file, and every AI edit is staged for your review." }
+            },
+            {
+              "@type": "Question",
+              "name": "Is there a hosted version of Membrain?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. membrain.devlune.in runs the same ledger as a free hosted service: sign in with email, GitHub, or Google, mint an API key, and point your agents at https://membrain.devlune.in/mcp. Encrypted at rest (not zero-knowledge), no telemetry, and your JSON export imports straight into a self-hosted ledger." }
             }
           ]
         }
@@ -113,7 +118,7 @@
         --hairline: rgba(28, 25, 20, 0.14);
         --hairline-strong: rgba(28, 25, 20, 0.32);
         --glow: rgba(28, 25, 20, 0.05);
-        --navy: #1e3a8a;
+        --navy: #1c1917;
         --serif: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
         --sans: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
         --mono: 'Cascadia Code', ui-monospace, Consolas, monospace;
@@ -315,6 +320,8 @@
           <a href="#features">Features</a>
           <a href="#how">How it works</a>
           <a href="#tools">MCP tools</a>
+          <a href="#cloud">Cloud</a>
+          <a class="btn-solid btn" href="/login">Open cloud ledger</a>
         </div>
       </nav>
     </header>
@@ -330,6 +337,7 @@
             </p>
             <div class="cta rise d3">
               <span class="npx"><b>$</b> npm i -g membrain-mcp</span>
+              <a class="btn-solid btn" href="/login#signup">Or use the hosted ledger →</a>
               <a class="btn" href="#how">Connect your agents</a>
             </div>
           </div>
@@ -343,7 +351,7 @@
         <div class="wrap">
           <span>One SQLite file</span>
           <span>No accounts</span>
-          <span>No cloud</span>
+          <span>No cloud required</span>
           <span>Works offline</span>
           <span>No telemetry, ever</span>
         </div>
@@ -516,6 +524,42 @@ membrain
         </div>
       </section>
 
+      <section id="cloud">
+        <div class="wrap">
+          <div class="rule-double"></div>
+          <div class="sec-head" style="margin-top: 14px">
+            <span class="label">Yours, either way</span>
+            <h2>Run it yourself, or open the hosted ledger</h2>
+          </div>
+          <p class="sec-sub">
+            Same ledger, same MCP tools, same web UI. The only question is whose machine it lives on.
+          </p>
+          <div class="features">
+            <div class="feature">
+              <span class="no">A</span>
+              <h3>Self-hosted<small>the flagship — most private</small></h3>
+              <p>
+                One npm install, one process, one SQLite file on your disk. Fully offline: local
+                embeddings, local Ollama for the clerk, no accounts anywhere, nothing ever leaves
+                your machine. <code class="pill">npm i -g membrain-mcp</code>
+              </p>
+            </div>
+            <div class="feature">
+              <span class="no">B</span>
+              <h3>Hosted, free<small>membrain.devlune.in — zero setup</small></h3>
+              <p>
+                Sign in with email, GitHub, or Google and the ledger is just there — nothing to
+                install or keep running. Agents connect with an API key you mint in the app;
+                sealed entries and staged writes work exactly the same. Encrypted at rest, honestly
+                labeled (<a href="/privacy">not zero-knowledge</a>), and your JSON export always
+                imports straight into a self-hosted ledger.
+              </p>
+              <p style="margin-top: 12px"><a class="btn-solid btn" href="/login#signup">Open a ledger →</a></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="faq">
         <div class="wrap">
           <div class="rule-double"></div>
@@ -542,7 +586,11 @@ membrain
             </details>
             <details>
               <summary>How is it different from mem0, Zep or OpenMemory?</summary>
-              <p>Membrain is single-user and local-first by design: no accounts, no hosted service, no external vector database. One process serves the web ledger, REST API and MCP endpoint over one file — and every AI edit is staged for your review.</p>
+              <p>Membrain is single-user and local-first by design: no accounts or hosted service required, no external vector database. One process serves the web ledger, REST API and MCP endpoint over one file — and every AI edit is staged for your review.</p>
+            </details>
+            <details>
+              <summary>Is there a hosted version?</summary>
+              <p>Yes — the same ledger runs as a free hosted service at <a href="/login">membrain.devlune.in</a>: sign in, mint an API key on the Integrations page, and point your agents at <code>https://membrain.devlune.in/mcp</code>. It's encrypted at rest and honestly labeled — <a href="/privacy">the privacy page</a> says exactly what that means. Self-hosted stays the flagship; your cloud export imports straight into it.</p>
             </details>
           </div>
         </div>

@@ -8,11 +8,11 @@
 
 *A self-hosted memory ledger you run on your own machine. Your agents share it over MCP.*
 
-[![npm](https://img.shields.io/npm/v/membrain-mcp?style=flat-square&color=1e3a8a&label=npm)](https://www.npmjs.com/package/membrain-mcp)
-[![node](https://img.shields.io/badge/node-%E2%89%A520-1e3a8a?style=flat-square)](https://github.com/SIDDHU123M/membrain-mcp)
-[![MCP](https://img.shields.io/badge/protocol-MCP-1e3a8a?style=flat-square)](https://modelcontextprotocol.io)
-[![license](https://img.shields.io/badge/license-MIT-1e3a8a?style=flat-square)](https://github.com/SIDDHU123M/membrain-mcp/blob/master/LICENSE)
-[![DevLune](https://img.shields.io/badge/built%20by-DevLune-4F8EF7?style=flat-square)](https://devlune.in)
+[![npm](https://img.shields.io/npm/v/membrain-mcp?style=flat-square&color=1c1917&label=npm)](https://www.npmjs.com/package/membrain-mcp)
+[![node](https://img.shields.io/badge/node-%E2%89%A520-1c1917?style=flat-square)](https://github.com/SIDDHU123M/membrain-mcp)
+[![MCP](https://img.shields.io/badge/protocol-MCP-1c1917?style=flat-square)](https://modelcontextprotocol.io)
+[![license](https://img.shields.io/badge/license-MIT-1c1917?style=flat-square)](https://github.com/SIDDHU123M/membrain-mcp/blob/master/LICENSE)
+[![DevLune](https://img.shields.io/badge/built%20by-DevLune-1c1917?style=flat-square)](https://devlune.in)
 
 </div>
 
@@ -21,7 +21,12 @@
 You write to the ledger from a paper-and-ink web UI. Your agents write to it over MCP: Claude Code,
 Claude Desktop, Cursor, anything that speaks the protocol. What one remembers, all of them know.
 
-Everything lives in **one SQLite file** on your disk. No accounts, no cloud, no telemetry. Works
+Prefer zero setup? The same ledger runs as a **free hosted version** at
+[membrain.devlune.in](https://membrain.devlune.in/login) — sign in, mint an API key on the
+Integrations page, point agents at `https://membrain.devlune.in/mcp`. Exports move freely between
+hosted and self-hosted.
+
+Everything below is the self-hosted flagship: **one SQLite file** on your disk. No accounts, no cloud, no telemetry. Works
 fully offline.
 
 ## Install
