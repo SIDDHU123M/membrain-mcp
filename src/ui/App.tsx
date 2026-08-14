@@ -10,6 +10,8 @@ import AgentImport from './AgentImport.js';
 import Docs from './Docs.js';
 import Settings from './Settings.js';
 import Integrations from './Integrations.js';
+import Cloud from './Cloud.js';
+import { BrandIcon } from './Tabs.js';
 import Tour, { tourPending } from './Tour.js';
 import Palette, { type PaletteAction } from './Palette.js';
 
@@ -20,6 +22,7 @@ const TABS = [
   { no: '04', name: 'Agent Import' },
   { no: '05', name: 'Docs' },
   { no: '06', name: 'Settings' },
+  { no: '07', name: 'Cloud' },
 ] as const;
 type Tab = (typeof TABS)[number]['name'] | 'Integrations';
 
@@ -68,7 +71,12 @@ export default function App() {
     if (cloud && (tab === 'Skills' || tab === 'Agent Import' || tab === 'Docs')) setTab('Memories');
   }, [cloud, tab]);
 
-  const [me, setMe] = useState<{ email: string; name: string | null } | null>(null);
+  const [me, setMe] = useState<{
+    email: string;
+    name: string | null;
+    github?: boolean;
+    google?: boolean;
+  } | null>(null);
   useEffect(() => {
     if (cloud) void api.me().then(setMe).catch(() => {});
   }, [cloud]);
@@ -218,7 +226,11 @@ export default function App() {
             {me && (
               <div className="mb-2.5">
                 <span className="label">Logged in as</span>
-                <p className="mt-0.5 truncate text-[13px] font-medium">{me.name || me.email}</p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-[13px] font-medium">
+                  <span className="truncate">{me.name || me.email}</span>
+                  {me.github && <BrandIcon name="github" size={12} />}
+                  {me.google && <BrandIcon name="google" size={12} />}
+                </p>
                 {me.name && (
                   <p className="truncate text-[11.5px] text-[var(--text-2)]" title={me.email}>
                     {me.email}
@@ -254,6 +266,7 @@ export default function App() {
         {tab === 'Docs' && <Docs />}
         {tab === 'Settings' && <Settings cloud={cloud} />}
         {tab === 'Integrations' && <Integrations />}
+        {tab === 'Cloud' && <Cloud />}
       </main>
 
       {palette && <Palette actions={paletteActions} onClose={() => setPalette(false)} />}

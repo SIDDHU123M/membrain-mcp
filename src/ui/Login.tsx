@@ -2,6 +2,7 @@
 // a local server — locals have no lock, and this page says so if opened there.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, type AuthConfig } from './api.js';
+import { BrandIcon } from './Tabs.js';
 import logo from './assets/membrain-logo.png';
 
 declare global {
@@ -254,13 +255,13 @@ export default function Login() {
                   </div>
                   <div className="grid gap-2">
                     {cfg?.github && (
-                      <a className="btn text-center" href="/api/auth/github">
-                        Continue with GitHub
+                      <a className="btn justify-center" href="/api/auth/github">
+                        <BrandIcon name="github" /> Continue with GitHub
                       </a>
                     )}
                     {cfg?.google && (
-                      <a className="btn text-center" href="/api/auth/google">
-                        Continue with Google
+                      <a className="btn justify-center" href="/api/auth/google">
+                        <BrandIcon name="google" /> Continue with Google
                       </a>
                     )}
                   </div>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api, type ApiKey, type AuthConfig } from './api.js';
 import { relativeTime } from './util.js';
-import PageTabs from './Tabs.js';
+import PageTabs, { BrandIcon } from './Tabs.js';
 
 const SECTIONS = [
   { key: 'account', label: 'Account', icon: 'user' },
@@ -38,7 +38,9 @@ function AccountCard() {
     const available = cfg?.[kind];
     return (
       <li className="flex items-center gap-3 py-2 text-[13px]">
-        <span className="font-medium">{label}</span>
+        <span className="inline-flex items-center gap-2 font-medium">
+          <BrandIcon name={kind} /> {label}
+        </span>
         {linked ? (
           <span className="ml-auto text-[12px] text-[var(--text-2)]">Linked — one-click sign-in works</span>
         ) : available ? (
