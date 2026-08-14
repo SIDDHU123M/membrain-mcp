@@ -130,7 +130,7 @@ export default function App() {
       </a>
 
       {/* The index — a ledger's table of contents down the left edge. */}
-      <aside className="border-[var(--line)] px-4 pb-4 pt-8 md:sticky md:top-0 md:h-screen md:border-r md:px-5 md:pt-10">
+      <aside className="border-[var(--line)] px-4 pb-4 pt-8 md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:px-5 md:pt-10">
         <div className="mb-8 flex items-center gap-3">
           <img
             src={logo}
@@ -210,32 +210,34 @@ export default function App() {
           >
             {theme === 'light' ? '☾ Night ledger' : '☀ Paper'}
           </button>
-          {cloud && (
-            <div className="mt-4 border-t border-[var(--line)] pt-3">
-              {me && (
-                <div className="mb-2.5">
-                  <span className="label">Logged in as</span>
-                  <p className="mt-0.5 truncate text-[13px] font-medium">{me.name || me.email}</p>
-                  {me.name && (
-                    <p className="truncate text-[11.5px] text-[var(--text-2)]" title={me.email}>
-                      {me.email}
-                    </p>
-                  )}
-                </div>
-              )}
-              <button
-                className="btn w-full"
-                onClick={() => {
-                  void api.logout().finally(() => {
-                    window.location.href = '/login';
-                  });
-                }}
-              >
-                Sign out
-              </button>
-            </div>
-          )}
         </div>
+
+        {/* the signature at the foot of the page — identity sits at the rail's bottom */}
+        {cloud && (
+          <div className="mt-6 hidden border-t border-[var(--line)] pt-3 md:mt-auto md:block">
+            {me && (
+              <div className="mb-2.5">
+                <span className="label">Logged in as</span>
+                <p className="mt-0.5 truncate text-[13px] font-medium">{me.name || me.email}</p>
+                {me.name && (
+                  <p className="truncate text-[11.5px] text-[var(--text-2)]" title={me.email}>
+                    {me.email}
+                  </p>
+                )}
+              </div>
+            )}
+            <button
+              className="btn w-full"
+              onClick={() => {
+                void api.logout().finally(() => {
+                  window.location.href = '/login';
+                });
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        )}
       </aside>
 
       <main id="main" className="min-w-0 px-4 pb-24 pt-6 md:px-8 md:pt-10">
