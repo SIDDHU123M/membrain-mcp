@@ -3,6 +3,14 @@
 import { useEffect, useState } from 'react';
 import { api, type ApiKey, type AuthConfig } from './api.js';
 import { relativeTime } from './util.js';
+import PageTabs from './Tabs.js';
+
+const SECTIONS = [
+  { key: 'account', label: 'Account', icon: 'user' },
+  { key: 'keys', label: 'API keys', icon: 'key' },
+  { key: 'connect', label: 'Connect', icon: 'plug' },
+  { key: 'selfhost', label: 'Self-host', icon: 'server' },
+];
 
 type Me = { email: string; name: string | null; github?: boolean; google?: boolean; password?: boolean };
 
@@ -100,6 +108,7 @@ export default function Integrations() {
   const [fresh, setFresh] = useState<{ name: string; key: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sec, setSec] = useState('account');
 
   const load = () => {
     void api
@@ -145,10 +154,16 @@ export default function Integrations() {
         API key. Every key is a named door — revoke one and only that agent loses access.
       </p>
 
-      <AccountCard />
+      <div className="mt-5">
+        <PageTabs tabs={SECTIONS} active={sec} onSelect={setSec} />
+      </div>
+
+      <div className={sec === 'account' ? '' : 'hidden'}>
+        <AccountCard />
+      </div>
 
       {/* keys */}
-      <div className="card mt-5 p-5">
+      <div className={`card mt-5 p-5 ${sec === 'keys' ? '' : 'hidden'}`}>
         <h3 className="display text-[17px] font-semibold">API keys</h3>
         <div className="mt-3 flex gap-2">
           <input
@@ -195,7 +210,7 @@ export default function Integrations() {
       </div>
 
       {/* connect */}
-      <div className="card mt-5 p-5">
+      <div className={`card mt-5 p-5 ${sec === 'connect' ? '' : 'hidden'}`}>
         <h3 className="display text-[17px] font-semibold">Connect an agent</h3>
         <p className="mt-1 text-[13px] text-[var(--text-2)]">
           {fresh
@@ -243,7 +258,7 @@ export default function Integrations() {
       </div>
 
       {/* what stays on your own machine */}
-      <div className="card mt-5 p-5">
+      <div className={`card mt-5 p-5 ${sec === 'selfhost' ? '' : 'hidden'}`}>
         <h3 className="display text-[17px] font-semibold">Want the rest? Self-host it</h3>
         <p className="mt-1 text-[13px] leading-5 text-[var(--text-2)]">
           The cloud ledger is memories only — on purpose. These live in the self-hosted version,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
+import PageTabs from './Tabs.js';
 
 function Field({
   label,
@@ -60,7 +61,19 @@ function presetOf(provider: string, url: string): string {
   return 'custom';
 }
 
+const LOCAL_TABS = [
+  { key: 'brain', label: 'The clerk', icon: 'quill' },
+  { key: 'embeddings', label: 'Embeddings', icon: 'vector' },
+  { key: 'paths', label: 'Paths', icon: 'folder' },
+  { key: 'data', label: 'Backup & data', icon: 'archive' },
+];
+const CLOUD_TABS = [
+  { key: 'brain', label: 'The clerk', icon: 'quill' },
+  { key: 'data', label: 'Your data', icon: 'archive' },
+];
+
 export default function Settings({ cloud = false }: { cloud?: boolean }) {
+  const [sec, setSec] = useState('brain');
   const [values, setValues] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<string | null>(null);
@@ -135,7 +148,8 @@ export default function Settings({ cloud = false }: { cloud?: boolean }) {
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-3.5">
-      <section className="card space-y-3.5 p-4 sm:p-5">
+      <PageTabs tabs={cloud ? CLOUD_TABS : LOCAL_TABS} active={sec} onSelect={setSec} />
+      <section className={`card space-y-3.5 p-4 sm:p-5 ${sec === 'brain' ? '' : 'hidden'}`}>
         <div>
           <span className="label">Sec. 01 — The clerk's brain</span>
           <p className="display mt-1 text-[13px] italic leading-5 text-[var(--text-2)]">
@@ -248,7 +262,7 @@ export default function Settings({ cloud = false }: { cloud?: boolean }) {
         </div>
       </section>
 
-      <section className="card space-y-3.5 p-4 sm:p-5">
+      <section className={`card space-y-3.5 p-4 sm:p-5 ${sec === 'embeddings' && !cloud ? '' : 'hidden'}`}>
         <div>
           <span className="label">Sec. 02 — Embeddings</span>
           <p className="display mt-1 text-[13px] italic leading-5 text-[var(--text-2)]">
@@ -293,7 +307,7 @@ export default function Settings({ cloud = false }: { cloud?: boolean }) {
         )}
       </section>
 
-      <section className="card space-y-3.5 p-4 sm:p-5">
+      <section className={`card space-y-3.5 p-4 sm:p-5 ${sec === 'paths' && !cloud ? '' : 'hidden'}`}>
         <div>
           <span className="label">Sec. 03 — Paths</span>
           <p className="display mt-1 text-[13px] italic leading-5 text-[var(--text-2)]">
@@ -316,24 +330,29 @@ export default function Settings({ cloud = false }: { cloud?: boolean }) {
         />
       </section>
 
-      <section className="card space-y-3.5 p-4 sm:p-5">
+      <section className={`card space-y-3.5 p-4 sm:p-5 ${sec === 'data' ? '' : 'hidden'}`}>
         <div>
-          <span className="label">Sec. 04 — Backup and data</span>
+          <span className="label">{cloud ? 'Sec. 02 — Your data' : 'Sec. 04 — Backup and data'}</span>
           <p className="display mt-1 text-[13px] italic leading-5 text-[var(--text-2)]">
-            The whole store is one SQLite file — a snapshot is a complete backup. JSON exports are
-            portable and re-importable (drop them on the Memories tab too).
+            {cloud
+              ? 'Your ledger exports as portable JSON — it imports straight into a self-hosted membrain, and back here.'
+              : 'The whole store is one SQLite file — a snapshot is a complete backup. JSON exports are portable and re-importable (drop them on the Memories tab too).'}
           </p>
         </div>
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-          <button className="btn-primary w-full justify-center" onClick={() => window.open('/api/backup', '_blank')}>
-            Download DB snapshot
-          </button>
+          {!cloud && (
+            <button className="btn-primary w-full justify-center" onClick={() => window.open('/api/backup', '_blank')}>
+              Download DB snapshot
+            </button>
+          )}
           <button className="btn w-full justify-center" onClick={() => window.open('/api/export/memories', '_blank')}>
             Export memories JSON
           </button>
-          <button className="btn w-full justify-center" onClick={() => window.open('/api/export/skills', '_blank')}>
-            Export skills JSON
-          </button>
+          {!cloud && (
+            <button className="btn w-full justify-center" onClick={() => window.open('/api/export/skills', '_blank')}>
+              Export skills JSON
+            </button>
+          )}
           <label className="btn w-full cursor-pointer justify-center">
             Import memories JSON
             <input
@@ -343,16 +362,18 @@ export default function Settings({ cloud = false }: { cloud?: boolean }) {
               onChange={(e) => void importJson(e.target.files?.[0], 'memories')}
             />
           </label>
-          <label className="btn w-full cursor-pointer justify-center">
-            Import skills JSON
-            <input
-              type="file"
-              accept=".json"
-              hidden
-              onChange={(e) => void importJson(e.target.files?.[0], 'skills')}
-            />
-          </label>
-          <div className="sm:col-span-2">
+          {!cloud && (
+            <label className="btn w-full cursor-pointer justify-center">
+              Import skills JSON
+              <input
+                type="file"
+                accept=".json"
+                hidden
+                onChange={(e) => void importJson(e.target.files?.[0], 'skills')}
+              />
+            </label>
+          )}
+          <div className={cloud ? 'hidden' : 'sm:col-span-2'}>
             <label className="label mb-1.5">Check for updates</label>
             <select
               className="input"
@@ -364,7 +385,7 @@ export default function Settings({ cloud = false }: { cloud?: boolean }) {
             </select>
           </div>
           <button
-            className="btn w-full justify-center sm:col-span-2"
+            className={`btn w-full justify-center sm:col-span-2 ${cloud ? 'hidden' : ''}`}
             onClick={() => {
               setNotice(null);
               void fetch('/api/export/markdown', {
