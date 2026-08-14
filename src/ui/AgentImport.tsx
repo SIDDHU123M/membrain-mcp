@@ -118,7 +118,7 @@ export default function AgentImport({ onImported }: { onImported: () => void }) 
                 >
                   <input
                     type="checkbox"
-                    className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-[#1e3a8a]"
+                    className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-[var(--accent)]"
                     checked={selected.has(f.path)}
                     disabled={!importable(f)}
                     onChange={() => toggle(f.path)}

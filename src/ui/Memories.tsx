@@ -1408,7 +1408,7 @@ export default function Memories({
               >
                 <input
                   type="checkbox"
-                  className="mt-1 h-3.5 w-3.5 shrink-0 cursor-pointer accent-[#1e3a8a]"
+                  className="mt-1 h-3.5 w-3.5 shrink-0 cursor-pointer accent-[var(--accent)]"
                   checked={f.checked}
                   onChange={() =>
                     setReview((r) =>
@@ -1562,7 +1562,7 @@ export default function Memories({
             <article key={m.id} className="card card-hover rise relative" style={{ animationDelay: `${Math.min(i, 12) * 24}ms` }} onContextMenu={(e) => openCtx(e, m)}>
               <input
                 type="checkbox"
-                className="absolute right-2.5 top-2.5 z-10 h-3.5 w-3.5 cursor-pointer accent-[#1e3a8a]"
+                className="absolute right-2.5 top-2.5 z-10 h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
                 checked={selected.has(m.id)}
                 onChange={() =>
                   setSelected((s) => {
@@ -1601,7 +1601,7 @@ export default function Memories({
             >
               <input
                 type="checkbox"
-                className="ml-3.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-[#1e3a8a]"
+                className="ml-3.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-[var(--accent)]"
                 checked={selected.has(m.id)}
                 onChange={() =>
                   setSelected((s) => {
@@ -1742,7 +1742,7 @@ export default function Memories({
                     <label key={m.id} className="flex cursor-pointer items-center gap-2.5 py-1.5">
                       <input
                         type="checkbox"
-                        className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-[#1e3a8a]"
+                        className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-[var(--accent)]"
                         checked={picked.has(m.id)}
                         onChange={() =>
                           setPicked((prev) => {

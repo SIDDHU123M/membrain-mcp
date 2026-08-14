@@ -1,7 +1,7 @@
 // Every writer signs the ledger in their own ink — the audit trail is the
 // visual system. Deep ink set on paper, lifted set for the night ledger.
-const NIGHT_PALETTE = ['#7dd3c8', '#e8a7c4', '#93c1e8', '#c3b3e8', '#a8cc9a', '#e0bd8a'];
-const PAPER_PALETTE = ['#0f766e', '#86198f', '#0e5a8a', '#5b21b6', '#3f6212', '#9a3412'];
+const NIGHT_PALETTE = ['#7dd3c8', '#e8a7c4', '#b8b2a6', '#c3b3e8', '#a8cc9a', '#e0bd8a'];
+const PAPER_PALETTE = ['#0f766e', '#86198f', '#57534e', '#5b21b6', '#3f6212', '#9a3412'];
 
 function isLight(): boolean {
   return typeof document !== 'undefined' && document.documentElement.dataset.theme !== 'dark';
@@ -9,7 +9,7 @@ function isLight(): boolean {
 
 export function sourceColor(source: string): string {
   const light = isLight();
-  if (source === 'ui') return light ? '#1e3a8a' : '#a8bff2';
+  if (source === 'ui') return light ? '#1c1917' : '#ece7db';
   if (source === 'import') return light ? '#92650f' : '#d9b36a';
   let h = 0;
   for (const c of source) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -18,16 +18,16 @@ export function sourceColor(source: string): string {
 
 const KIND_NIGHT: Record<string, string> = {
   person: '#7dd3c8',
-  project: '#a8bff2',
-  tool: '#93c1e8',
+  project: '#d8d2c4',
+  tool: '#b8b2a6',
   preference: '#e8a7c4',
   topic: '#c3b3e8',
   fact: '#e0bd8a',
 };
 const KIND_PAPER: Record<string, string> = {
   person: '#0f766e',
-  project: '#1e3a8a',
-  tool: '#0e5a8a',
+  project: '#44403c',
+  tool: '#57534e',
   preference: '#86198f',
   topic: '#5b21b6',
   fact: '#92650f',

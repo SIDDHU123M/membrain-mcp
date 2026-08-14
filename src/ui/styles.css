@@ -19,10 +19,10 @@
   --text: #1c1917;
   --text-2: #57534e;
   --text-3: #99948a;
-  --accent: #1e3a8a;
-  --accent-text: #1e3a8a;
-  --accent-soft: rgba(30, 58, 138, 0.07);
-  --accent-line: rgba(30, 58, 138, 0.4);
+  --accent: #1c1917;
+  --accent-text: #1c1917;
+  --accent-soft: rgba(28, 25, 23, 0.06);
+  --accent-line: rgba(28, 25, 23, 0.4);
   --danger: #b91c1c;
   --warn: #92650f;
   --shadow: 0 1px 2px rgba(28, 25, 20, 0.05), 0 10px 30px -18px rgba(28, 25, 20, 0.25);
@@ -43,10 +43,10 @@
   --text: #ece7db;
   --text-2: #b3ada0;
   --text-3: #7a756a;
-  --accent: #a8bff2;
-  --accent-text: #a8bff2;
-  --accent-soft: rgba(168, 191, 242, 0.09);
-  --accent-line: rgba(168, 191, 242, 0.4);
+  --accent: #ece7db;
+  --accent-text: #ece7db;
+  --accent-soft: rgba(236, 231, 219, 0.08);
+  --accent-line: rgba(236, 231, 219, 0.4);
   --danger: #f0a3a3;
   --warn: #d9b36a;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -18px rgba(0, 0, 0, 0.55);
@@ -92,10 +92,10 @@ h3,
 }
 
 ::selection {
-  background: rgba(30, 58, 138, 0.18);
+  background: rgba(28, 25, 23, 0.16);
 }
 :root[data-theme='dark'] ::selection {
-  background: rgba(168, 191, 242, 0.28);
+  background: rgba(236, 231, 219, 0.28);
 }
 
 *:focus-visible {
