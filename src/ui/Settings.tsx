@@ -60,7 +60,7 @@ function presetOf(provider: string, url: string): string {
   return 'custom';
 }
 
-export default function Settings() {
+export default function Settings({ cloud = false }: { cloud?: boolean }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<string | null>(null);
@@ -139,8 +139,9 @@ export default function Settings() {
         <div>
           <span className="label">Sec. 01 — The clerk's brain</span>
           <p className="display mt-1 text-[13px] italic leading-5 text-[var(--text-2)]">
-            The AI behind organizing, titles, summaries, and import distillation. Local Ollama by
-            default; no local GPU? Point it at a cloud provider — just paste an API key.
+            {cloud
+              ? 'The AI behind organizing, titles, summaries, and import distillation. The hosted ledger runs it on Workers AI — or point it at any provider with your own key.'
+              : 'The AI behind organizing, titles, summaries, and import distillation. Local Ollama by default; no local GPU? Point it at a cloud provider — just paste an API key.'}
           </p>
         </div>
         <div>
@@ -154,7 +155,9 @@ export default function Settings() {
               set('llm_api_url', p.url);
             }}
           >
-            <option value="ollama">Local Ollama — private, offline (default)</option>
+            <option value="ollama">
+              {cloud ? 'Workers AI — built in, free (default)' : 'Local Ollama — private, offline (default)'}
+            </option>
             <option value="openai">OpenAI</option>
             <option value="anthropic">Anthropic — Claude</option>
             <option value="openrouter">OpenRouter — hundreds of models, one key</option>
@@ -163,6 +166,7 @@ export default function Settings() {
           </select>
         </div>
         {(values.llm_provider ?? 'ollama') === 'ollama' ? (
+          cloud ? null : (
           <>
             <Field
               label="Ollama URL"
@@ -179,6 +183,7 @@ export default function Settings() {
               mono
             />
           </>
+          )
         ) : (
           <>
             <Field

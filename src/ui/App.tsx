@@ -230,7 +230,7 @@ export default function App() {
         {tab === 'Skills' && <Skills />}
         {tab === 'Agent Import' && <AgentImport onImported={refreshStats} />}
         {tab === 'Docs' && <Docs />}
-        {tab === 'Settings' && <Settings />}
+        {tab === 'Settings' && <Settings cloud={cloud} />}
         {tab === 'Integrations' && <Integrations />}
       </main>
 
