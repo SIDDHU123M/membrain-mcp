@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/membrain-logo.png" alt="Membrain" width="300" />
+<img src="https://raw.githubusercontent.com/SIDDHU123M/membrain-mcp/master/assets/membrain-logo.png" alt="Membrain" width="300" />
 
 # Membrain
 
@@ -71,44 +71,7 @@ Sealed entries, staged agent writes, and the proposal queue behave identically i
 
 ## How it fits together
 
-```mermaid
-%%{init: {'theme':'base','themeVariables':{
-  'primaryColor':'#fdfcf7','primaryTextColor':'#1c1917','primaryBorderColor':'#1c1917',
-  'lineColor':'#57534e','fontFamily':'Georgia, serif','fontSize':'14px',
-  'clusterBkg':'#f4f1e8','clusterBorder':'#b8b09a','edgeLabelBackground':'#fdfcf7'
-}}}%%
-flowchart LR
-    subgraph agents ["Your agents"]
-        CC["Claude Code"]
-        CD["Claude Desktop"]
-        CU["Cursor · any MCP client"]
-    end
-    YOU(["You · browser"])
-
-    CC -- "HTTP /mcp" --> MCP
-    CU -- "HTTP /mcp" --> MCP
-    CD -- "stdio" --> MCP
-    YOU -- "web ledger + REST" --> REST
-
-    subgraph membrain ["membrain · one process"]
-        MCP["MCP server<br/>8 tools"]
-        REST["REST + web UI"]
-        CORE["core<br/>chunk · embed · hybrid search"]
-        LLM["the clerk<br/>Ollama or cloud key"]
-        MCP --> CORE
-        REST --> CORE
-        CORE -.-> LLM
-    end
-
-    CORE --> DB[("memory.db<br/>SQLite + sqlite-vec + FTS5")]
-
-    classDef agent fill:#fdfcf7,stroke:#1c1917,stroke-width:1.5px,color:#1c1917
-    classDef human fill:#fdfcf7,stroke:#0f766e,stroke-width:1.5px,color:#1c1917
-    classDef store fill:#1c1917,stroke:#1c1917,color:#f4f1e8
-    class CC,CD,CU agent
-    class YOU human
-    class DB store
-```
+<img src="https://raw.githubusercontent.com/SIDDHU123M/membrain-mcp/master/assets/diagram.png" alt="How Membrain fits together: your agents connect over MCP, you use the web ledger, everything lands in one SQLite file" width="820" />
 
 ## Command
 
