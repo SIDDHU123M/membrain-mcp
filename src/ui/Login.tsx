@@ -13,8 +13,15 @@ declare global {
   }
 }
 
+const RESET_TOKEN = window.location.hash.startsWith('#reset=')
+  ? window.location.hash.slice('#reset='.length)
+  : null;
+
 export default function Login() {
-  const [mode, setMode] = useState<'in' | 'up'>(window.location.hash === '#signup' ? 'up' : 'in');
+  const [mode, setMode] = useState<'in' | 'up' | 'forgot' | 'reset'>(
+    RESET_TOKEN ? 'reset' : window.location.hash === '#signup' ? 'up' : 'in',
+  );
+  const [info, setInfo] = useState<string | null>(null);
   const [cfg, setCfg] = useState<AuthConfig | null>(null);
   const [selfHosted, setSelfHosted] = useState(false);
   const [error, setError] = useState<string | null>(
@@ -65,8 +72,17 @@ export default function Login() {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    setInfo(null);
     try {
-      if (mode === 'up') {
+      if (mode === 'forgot') {
+        await api.forgotPassword(email);
+        setInfo('If that account exists, a reset letter is on its way. It is good for 30 minutes.');
+        setBusy(false);
+        return;
+      }
+      if (mode === 'reset') {
+        await api.resetPassword(RESET_TOKEN ?? '', password);
+      } else if (mode === 'up') {
         const token = document.querySelector<HTMLInputElement>('[name="cf-turnstile-response"]')?.value;
         await api.signup({ email, password, name: name.trim() || undefined, turnstile: token });
       } else {
@@ -80,9 +96,10 @@ export default function Login() {
     }
   };
 
-  const switchMode = (m: 'in' | 'up') => {
+  const switchMode = (m: 'in' | 'up' | 'forgot') => {
     setMode(m);
     setError(null);
+    setInfo(null);
   };
 
   return (
@@ -116,24 +133,36 @@ export default function Login() {
             </div>
           ) : (
             <>
-              <div className="mb-4 flex gap-1.5" role="tablist" aria-label="Sign in or create account">
-                <button
-                  role="tab"
-                  aria-selected={mode === 'in'}
-                  className={mode === 'in' ? 'btn-primary flex-1' : 'btn flex-1'}
-                  onClick={() => switchMode('in')}
-                >
-                  Sign in
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={mode === 'up'}
-                  className={mode === 'up' ? 'btn-primary flex-1' : 'btn flex-1'}
-                  onClick={() => switchMode('up')}
-                >
-                  Start a ledger
-                </button>
-              </div>
+              {(mode === 'in' || mode === 'up') && (
+                <div className="mb-4 flex gap-1.5" role="tablist" aria-label="Sign in or create account">
+                  <button
+                    role="tab"
+                    aria-selected={mode === 'in'}
+                    className={mode === 'in' ? 'btn-primary flex-1' : 'btn flex-1'}
+                    onClick={() => switchMode('in')}
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    role="tab"
+                    aria-selected={mode === 'up'}
+                    className={mode === 'up' ? 'btn-primary flex-1' : 'btn flex-1'}
+                    onClick={() => switchMode('up')}
+                  >
+                    Start a ledger
+                  </button>
+                </div>
+              )}
+              {mode === 'forgot' && (
+                <p className="mb-4 text-[13px] leading-5 text-[var(--text-2)]">
+                  Tell us the email on the ledger — we mail a link that lets you set a new password.
+                </p>
+              )}
+              {mode === 'reset' && (
+                <p className="mb-4 text-[13px] leading-5 text-[var(--text-2)]">
+                  Set a new password for your ledger. You'll be signed in right after.
+                </p>
+              )}
 
               <form onSubmit={(e) => void submit(e)}>
                 {mode === 'up' && (
@@ -150,46 +179,73 @@ export default function Login() {
                     />
                   </div>
                 )}
-                <div className="mb-3">
-                  <label className="label mb-1 block" htmlFor="login-email">
-                    Email
-                  </label>
-                  <input
-                    id="login-email"
-                    className="input w-full"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="label mb-1 block" htmlFor="login-password">
-                    Password
-                  </label>
-                  <input
-                    id="login-password"
-                    className="input w-full"
-                    type="password"
-                    required
-                    minLength={8}
-                    autoComplete={mode === 'up' ? 'new-password' : 'current-password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
+                {mode !== 'reset' && (
+                  <div className="mb-3">
+                    <label className="label mb-1 block" htmlFor="login-email">
+                      Email
+                    </label>
+                    <input
+                      id="login-email"
+                      className="input w-full"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                )}
+                {mode !== 'forgot' && (
+                  <div className="mb-1.5">
+                    <label className="label mb-1 block" htmlFor="login-password">
+                      {mode === 'reset' ? 'New password' : 'Password'}
+                    </label>
+                    <input
+                      id="login-password"
+                      className="input w-full"
+                      type="password"
+                      required
+                      minLength={8}
+                      autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                )}
+                {mode === 'in' && (
+                  <p className="mb-3 text-right text-[12px]">
+                    <a className="cursor-pointer text-[var(--text-2)] underline" onClick={() => switchMode('forgot')}>
+                      Forgot password?
+                    </a>
+                  </p>
+                )}
 
                 {mode === 'up' && cfg?.sitekey && <div ref={tsRef} className="mb-3" />}
 
                 {error && <p className="notice mb-3 text-[13px]">{error}</p>}
+                {info && <p className="mb-3 text-[13px] text-[var(--text-2)]">{info}</p>}
 
-                <button className="btn-primary w-full" disabled={busy} type="submit">
-                  {busy ? 'One moment…' : mode === 'up' ? 'Open a new ledger' : 'Open your ledger'}
+                <button className="btn-primary mt-2 w-full" disabled={busy} type="submit">
+                  {busy
+                    ? 'One moment…'
+                    : mode === 'up'
+                      ? 'Open a new ledger'
+                      : mode === 'forgot'
+                        ? 'Send the reset letter'
+                        : mode === 'reset'
+                          ? 'Set new password'
+                          : 'Open your ledger'}
                 </button>
+                {(mode === 'forgot' || mode === 'reset') && (
+                  <p className="mt-3 text-center text-[12px]">
+                    <a className="cursor-pointer text-[var(--text-2)] underline" onClick={() => switchMode('in')}>
+                      Back to sign in
+                    </a>
+                  </p>
+                )}
               </form>
 
-              {(cfg?.github || cfg?.google) && (
+              {(mode === 'in' || mode === 'up') && (cfg?.github || cfg?.google) && (
                 <>
                   <div className="my-4 flex items-center gap-3 text-[11px] uppercase tracking-wide text-[var(--text-2)]">
                     <span className="h-px flex-1 bg-[var(--line)]" aria-hidden="true" />

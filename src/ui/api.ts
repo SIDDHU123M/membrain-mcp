@@ -237,6 +237,19 @@ export const api = {
   signup: (body: { email: string; password: string; name?: string; turnstile?: string }) =>
     req<{ ok: true }>('/api/auth/signup', { method: 'POST', body: JSON.stringify(body) }),
   logout: () => req<{ ok: true }>('/api/auth/logout', { method: 'POST', body: '{}' }),
+  me: () =>
+    req<{ email: string; name: string | null; github?: boolean; google?: boolean; password?: boolean }>(
+      '/api/auth/me',
+    ),
+  updateProfile: (name: string) =>
+    req<{ email: string; name: string | null }>('/api/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
+  forgotPassword: (email: string) =>
+    req<{ ok: true }>('/api/auth/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) =>
+    req<{ ok: true }>('/api/auth/reset', { method: 'POST', body: JSON.stringify({ token, password }) }),
   keys: () => req<ApiKey[]>('/api/keys'),
   createKey: (name: string) =>
     req<{ id: number; name: string; key: string }>('/api/keys', {

@@ -26,8 +26,10 @@ type Tab = (typeof TABS)[number]['name'] | 'Integrations';
 // the hosted ledger has no local skill files or agent-memory dirs; it gets
 // the Integrations tab (API keys + connect commands) instead
 const cloudTabs = (cloud: boolean): { no: string; name: Tab }[] => {
+  // cloud is memories-only: skills, agent-memory and Docs (local-install docs)
+  // belong to the self-hosted ledger — Integrations says so explicitly
   const names: Tab[] = cloud
-    ? ['Memories', 'Map', 'Integrations', 'Docs', 'Settings']
+    ? ['Memories', 'Map', 'Integrations', 'Settings']
     : TABS.map((t) => t.name);
   return names.map((name, i) => ({ no: String(i + 1).padStart(2, '0'), name }));
 };
@@ -63,8 +65,13 @@ export default function App() {
   const cloud = !!stats?.cloud;
   const tabs = cloudTabs(cloud);
   useEffect(() => {
-    if (cloud && (tab === 'Skills' || tab === 'Agent Import')) setTab('Memories');
+    if (cloud && (tab === 'Skills' || tab === 'Agent Import' || tab === 'Docs')) setTab('Memories');
   }, [cloud, tab]);
+
+  const [me, setMe] = useState<{ email: string; name: string | null } | null>(null);
+  useEffect(() => {
+    if (cloud) void api.me().then(setMe).catch(() => {});
+  }, [cloud]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -204,16 +211,29 @@ export default function App() {
             {theme === 'light' ? '☾ Night ledger' : '☀ Paper'}
           </button>
           {cloud && (
-            <button
-              className="btn mt-2 w-full"
-              onClick={() => {
-                void api.logout().finally(() => {
-                  window.location.href = '/login';
-                });
-              }}
-            >
-              Close the ledger · sign out
-            </button>
+            <div className="mt-4 border-t border-[var(--line)] pt-3">
+              {me && (
+                <div className="mb-2.5">
+                  <span className="label">Logged in as</span>
+                  <p className="mt-0.5 truncate text-[13px] font-medium">{me.name || me.email}</p>
+                  {me.name && (
+                    <p className="truncate text-[11.5px] text-[var(--text-2)]" title={me.email}>
+                      {me.email}
+                    </p>
+                  )}
+                </div>
+              )}
+              <button
+                className="btn w-full"
+                onClick={() => {
+                  void api.logout().finally(() => {
+                    window.location.href = '/login';
+                  });
+                }}
+              >
+                Sign out
+              </button>
+            </div>
           )}
         </div>
       </aside>

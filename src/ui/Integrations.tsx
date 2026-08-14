@@ -1,8 +1,73 @@
 // Hosted-ledger tab: mint/revoke API keys and connect agents to /mcp.
 // Only rendered when /api/stats reports cloud: true.
 import { useEffect, useState } from 'react';
-import { api, type ApiKey } from './api.js';
+import { api, type ApiKey, type AuthConfig } from './api.js';
 import { relativeTime } from './util.js';
+
+type Me = { email: string; name: string | null; github?: boolean; google?: boolean; password?: boolean };
+
+function AccountCard() {
+  const [me, setMe] = useState<Me | null>(null);
+  const [cfg, setCfg] = useState<AuthConfig | null>(null);
+  const [nameVal, setNameVal] = useState('');
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    void api.me().then((m) => {
+      setMe(m);
+      setNameVal(m.name ?? '');
+    });
+    void api.authConfig().then(setCfg).catch(() => {});
+  }, []);
+  if (!me) return null;
+  const saveName = async () => {
+    await api.updateProfile(nameVal.trim());
+    setMe({ ...me, name: nameVal.trim() || null });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+  const provider = (kind: 'github' | 'google', label: string) => {
+    const linked = me[kind];
+    const available = cfg?.[kind];
+    return (
+      <li className="flex items-center gap-3 py-2 text-[13px]">
+        <span className="font-medium">{label}</span>
+        {linked ? (
+          <span className="ml-auto text-[12px] text-[var(--text-2)]">Linked — one-click sign-in works</span>
+        ) : available ? (
+          <a className="btn ml-auto px-2 py-0.5 text-[11px]" href={`/api/auth/${kind}?link=1`}>
+            Link account
+          </a>
+        ) : (
+          <span className="ml-auto text-[12px] text-[var(--text-3)]">not configured yet</span>
+        )}
+      </li>
+    );
+  };
+  return (
+    <div className="card mt-6 p-5">
+      <h3 className="display text-[17px] font-semibold">Account</h3>
+      <div className="mt-3 flex items-end gap-2">
+        <div className="flex-1">
+          <label className="label mb-1 block" htmlFor="acct-name">
+            Name
+          </label>
+          <input id="acct-name" className="input" value={nameVal} onChange={(e) => setNameVal(e.target.value)} />
+        </div>
+        <button className="btn shrink-0" onClick={() => void saveName()} disabled={(me.name ?? '') === nameVal.trim()}>
+          {saved ? 'Saved' : 'Save'}
+        </button>
+      </div>
+      <p className="mt-2 text-[12px] text-[var(--text-2)]">
+        Signed in as <span className="mono">{me.email}</span>
+        {me.password === false && ' · no password set — you sign in with a linked account'}
+      </p>
+      <ul className="mt-3 divide-y divide-[var(--line)] border-t border-[var(--line)]">
+        {provider('github', 'GitHub')}
+        {provider('google', 'Google')}
+      </ul>
+    </div>
+  );
+}
 
 function CopyBlock({ label, text }: { label: string; text: string }) {
   const [copied, setCopied] = useState(false);
@@ -80,8 +145,10 @@ export default function Integrations() {
         API key. Every key is a named door — revoke one and only that agent loses access.
       </p>
 
+      <AccountCard />
+
       {/* keys */}
-      <div className="card mt-6 p-5">
+      <div className="card mt-5 p-5">
         <h3 className="display text-[17px] font-semibold">API keys</h3>
         <div className="mt-3 flex gap-2">
           <input
@@ -172,6 +239,29 @@ export default function Integrations() {
           Once connected, agents get the same tools as against a self-hosted ledger:
           save_memory, search_memory, memory_context and friends. Sealed entries stay invisible to
           them, and if you set agent writes to “staged” in Settings, saves wait for your approval.
+        </p>
+      </div>
+
+      {/* what stays on your own machine */}
+      <div className="card mt-5 p-5">
+        <h3 className="display text-[17px] font-semibold">Want the rest? Self-host it</h3>
+        <p className="mt-1 text-[13px] leading-5 text-[var(--text-2)]">
+          The cloud ledger is memories only — on purpose. These live in the self-hosted version,
+          where your files and your machine are available:
+        </p>
+        <ul className="mt-3 list-disc space-y-1 pl-5 text-[13px] text-[var(--text-2)]">
+          <li>Skills — create and edit your agents' SKILL.md files on disk</li>
+          <li>Agent memory import — discover and pull in memory your agents already keep locally</li>
+          <li>One-click SQLite snapshots and a git-friendly markdown-folder export</li>
+          <li>Fully offline recall and a local Ollama clerk — nothing ever leaves your machine</li>
+        </ul>
+        <CopyBlock label="Install (Node 20+)" text={'npm i -g membrain-mcp\nmembrain'} />
+        <p className="mt-3 text-[12px] leading-5 text-[var(--text-2)]">
+          Your cloud export (Settings → Export memories JSON) imports straight into it —{' '}
+          <a className="underline" href="https://github.com/SIDDHU123M/membrain-mcp">
+            source and docs on GitHub
+          </a>
+          .
         </p>
       </div>
     </div>
