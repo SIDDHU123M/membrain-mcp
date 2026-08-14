@@ -9,6 +9,7 @@ import Skills from './Skills.js';
 import AgentImport from './AgentImport.js';
 import Docs from './Docs.js';
 import Settings from './Settings.js';
+import Integrations from './Integrations.js';
 import Tour, { tourPending } from './Tour.js';
 import Palette, { type PaletteAction } from './Palette.js';
 
@@ -20,7 +21,16 @@ const TABS = [
   { no: '05', name: 'Docs' },
   { no: '06', name: 'Settings' },
 ] as const;
-type Tab = (typeof TABS)[number]['name'];
+type Tab = (typeof TABS)[number]['name'] | 'Integrations';
+
+// the hosted ledger has no local skill files or agent-memory dirs; it gets
+// the Integrations tab (API keys + connect commands) instead
+const cloudTabs = (cloud: boolean): { no: string; name: Tab }[] => {
+  const names: Tab[] = cloud
+    ? ['Memories', 'Map', 'Integrations', 'Docs', 'Settings']
+    : TABS.map((t) => t.name);
+  return names.map((name, i) => ({ no: String(i + 1).padStart(2, '0'), name }));
+};
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('Memories');
@@ -50,6 +60,12 @@ export default function App() {
   }, []);
   useEffect(refreshStats, [refreshStats]);
 
+  const cloud = !!stats?.cloud;
+  const tabs = cloudTabs(cloud);
+  useEffect(() => {
+    if (cloud && (tab === 'Skills' || tab === 'Agent Import')) setTab('Memories');
+  }, [cloud, tab]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -78,7 +94,7 @@ export default function App() {
   }, []);
 
   const paletteActions: PaletteAction[] = [
-    ...TABS.map((t) => ({
+    ...tabs.map((t) => ({
       label: `Go to ${t.name}`,
       hint: t.no,
       run: () => setTab(t.name),
@@ -95,7 +111,7 @@ export default function App() {
       label: theme === 'light' ? 'Switch to night ledger' : 'Switch to paper',
       run: () => setTheme((t) => (t === 'light' ? 'dark' : 'light')),
     },
-    { label: 'Download DB snapshot', run: () => window.open('/api/backup', '_blank') },
+    ...(cloud ? [] : [{ label: 'Download DB snapshot', run: () => window.open('/api/backup', '_blank') }]),
     { label: 'Export memories JSON', run: () => window.open('/api/export/memories', '_blank') },
     { label: 'Replay the tour', run: () => setTouring(true) },
   ];
@@ -126,7 +142,7 @@ export default function App() {
           className="flex gap-1 overflow-x-auto md:flex-col md:gap-0.5 md:overflow-visible"
           aria-label="Sections"
         >
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.name}
               data-tour={t.name}
@@ -187,6 +203,18 @@ export default function App() {
           >
             {theme === 'light' ? '☾ Night ledger' : '☀ Paper'}
           </button>
+          {cloud && (
+            <button
+              className="btn mt-2 w-full"
+              onClick={() => {
+                void api.logout().finally(() => {
+                  window.location.href = '/login';
+                });
+              }}
+            >
+              Close the ledger · sign out
+            </button>
+          )}
         </div>
       </aside>
 
@@ -203,6 +231,7 @@ export default function App() {
         {tab === 'Agent Import' && <AgentImport onImported={refreshStats} />}
         {tab === 'Docs' && <Docs />}
         {tab === 'Settings' && <Settings />}
+        {tab === 'Integrations' && <Integrations />}
       </main>
 
       {palette && <Palette actions={paletteActions} onClose={() => setPalette(false)} />}

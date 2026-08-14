@@ -29,6 +29,21 @@ export interface Stats {
   embeddingModel: string | null;
   version?: string | null;
   latest?: string | null;
+  cloud?: boolean; // set by the hosted ledger; gates Login/Integrations surfaces
+}
+
+export interface ApiKey {
+  id: number;
+  name: string;
+  prefix: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface AuthConfig {
+  sitekey: string | null;
+  github: boolean;
+  google: boolean;
 }
 
 export interface SkillInfo {
@@ -215,6 +230,20 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(patch),
     }),
+  // hosted-ledger only (membrain-cloud); local servers have none of these routes
+  authConfig: () => req<AuthConfig>('/api/auth/config'),
+  login: (email: string, password: string) =>
+    req<{ ok: true }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  signup: (body: { email: string; password: string; name?: string; turnstile?: string }) =>
+    req<{ ok: true }>('/api/auth/signup', { method: 'POST', body: JSON.stringify(body) }),
+  logout: () => req<{ ok: true }>('/api/auth/logout', { method: 'POST', body: '{}' }),
+  keys: () => req<ApiKey[]>('/api/keys'),
+  createKey: (name: string) =>
+    req<{ id: number; name: string; key: string }>('/api/keys', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  revokeKey: (id: number) => req<{ ok: true }>(`/api/keys/${id}`, { method: 'DELETE' }),
   agentMemory: () => req<AgentMemoryFile[]>('/api/agent-memory'),
   importAgentMemory: (paths: string[]) =>
     req<{ imported: number; added: number; updated: number; skipped: number }>(
