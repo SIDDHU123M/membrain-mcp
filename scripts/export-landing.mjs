@@ -32,6 +32,9 @@ while (queue.length) {
 }
 fs.writeFileSync(path.join(out, 'index.html'), html);
 
+// the app's M favicon, referenced by <link rel="icon">
+fs.copyFileSync(path.join(src, 'icon.svg'), path.join(out, 'icon.svg'));
+
 // ---- SEO furniture ----
 const SITE = 'https://membrain.devlune.in';
 // social preview image referenced by og:image
